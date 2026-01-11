@@ -1,0 +1,309 @@
+/**
+ * PayNow Shipping - Admin Styles
+ * 莫蘭迪淡藍色系配色
+ *
+ * @package YangSheep\PayNow\Shipping
+ * @since   1.0.0
+ */
+
+/* ============================================
+   CSS Variables - 莫蘭迪淡藍灰配色
+   ============================================ */
+:root {
+    --ys-primary: #8fa8b8;
+    --ys-primary-hover: #7a95a6;
+    --ys-primary-light: #e8eff5;
+    --ys-border: #c5d1d8;
+    --ys-bg-light: #f5f8fa;
+    --ys-text: #333;
+    --ys-text-muted: #6b8a9a;
+}
+
+/* Meta Box 樣式 */
+.ys-paynow-meta-box p {
+    margin: 8px 0;
+}
+
+.ys-paynow-meta-box p strong {
+    color: #23282d;
+}
+
+.ys-paynow-meta-box hr {
+    margin: 12px 0;
+    border: 0;
+    border-top: 1px solid #eee;
+}
+
+/* 操作按鈕 */
+.ys-paynow-actions {
+    margin-top: 10px;
+}
+
+.ys-paynow-actions .button {
+    margin-right: 5px;
+    margin-bottom: 5px;
+}
+
+.ys-paynow-actions .description {
+    font-style: italic;
+    color: #666;
+}
+
+/* 訂單列表欄位 */
+.ys-paynow-shipping-info {
+    line-height: 1.5;
+}
+
+.ys-paynow-shipping-info small {
+    color: #666;
+}
+
+.ys-paynow-status {
+    display: inline-block;
+    padding: 2px 6px;
+    background: var(--ys-primary-light);
+    color: var(--ys-text-muted);
+    border-radius: 3px;
+    font-size: 11px;
+}
+
+/* 成功狀態 */
+.ys-paynow-success {
+    color: var(--ys-primary);
+}
+
+/* 錯誤狀態 */
+.ys-paynow-error {
+    color: #dc3232;
+}
+
+/* 警告狀態 */
+.ys-paynow-warning {
+    color: #b8860b;
+}
+
+/* 載入中 */
+.ys-paynow-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* 彈出視窗 */
+.ys-paynow-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ys-paynow-modal {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.ys-paynow-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--ys-border);
+}
+
+.ys-paynow-modal-header h3 {
+    margin: 0;
+    color: var(--ys-text);
+}
+
+.ys-paynow-modal-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #666;
+}
+
+.ys-paynow-modal-close:hover {
+    color: var(--ys-text);
+}
+
+/* 批次操作按鈕 */
+.ys-paynow-bulk-btn {
+    margin-left: 10px;
+}
+
+/* ============================================
+   物流狀態標籤樣式
+   ============================================ */
+
+.ys-status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+/* 待建立 - 灰色 */
+.ys-status-pending {
+    background: #f0f4f7;
+    color: #7a8b95;
+}
+
+/* 等待寄件 - 淡藍 */
+.ys-status-waiting {
+    background: #e8eff5;
+    color: #6b8a9a;
+}
+
+/* 已建立 - 藍色 */
+.ys-status-created {
+    background: #e1f0ff;
+    color: #0073aa;
+}
+
+/* 配送中 - 橘黃 */
+.ys-status-shipping {
+    background: #fef6e8;
+    color: #b8860b;
+}
+
+/* 到店待取 - 紫色 */
+.ys-status-arrived {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+/* 已完成 - 灰藍 */
+.ys-status-completed {
+    background: #e8eff5;
+    color: #6b8a9a;
+}
+
+/* 已取消/退貨 - 紅色 */
+.ys-status-cancelled {
+    background: #ffebee;
+    color: #c62828;
+}
+
+/* 預設 - 灰色 */
+.ys-status-default {
+    background: #f0f4f7;
+    color: #7a8b95;
+}
+
+/* ============================================
+   Meta Box 按鈕網格佈局
+   ============================================ */
+
+.ys-paynow-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.ys-paynow-actions-grid .button {
+    text-align: center;
+    justify-content: center;
+    margin: 0 !important;
+}
+
+.ys-paynow-actions-grid .button-primary {
+    grid-column: 1 / -1;
+    background: var(--ys-primary) !important;
+    border-color: var(--ys-primary-hover) !important;
+}
+
+.ys-paynow-actions-grid .button-primary:hover {
+    background: var(--ys-primary-hover) !important;
+}
+
+.ys-paynow-actions-full {
+    margin-top: 10px;
+}
+
+.ys-paynow-actions-full .button {
+    width: 100%;
+    text-align: center;
+}
+
+/* Meta Box 內容間距 */
+.ys-paynow-meta-box .ys-info-row {
+    display: flex;
+    margin-bottom: 6px;
+}
+
+.ys-paynow-meta-box .ys-info-label {
+    min-width: 70px;
+    color: #646970;
+    font-size: 12px;
+}
+
+.ys-paynow-meta-box .ys-info-value {
+    flex: 1;
+    font-size: 12px;
+    word-break: break-all;
+}
+
+/* ============================================
+   WooCommerce 設定頁面樣式調整（YS PayNow 設定分頁）
+   ============================================ */
+
+/* 設定區塊標題與說明文字同行顯示 */
+.ys-paynow-settings h2 {
+    display: inline;
+    margin-right: 8px;
+}
+
+.ys-paynow-settings h2 + p {
+    display: inline;
+    margin: 0;
+    color: #646970;
+    font-size: 13px;
+    font-weight: normal;
+}
+
+/* 設定區塊之間增加間距 */
+.ys-paynow-settings table.form-table {
+    margin-bottom: 10px;
+}
+
+/* 區塊標題容器 */
+.ys-paynow-settings .ys-settings-section {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e2e4e7;
+}
+
+/* 第一個區塊不需要上邊框 */
+.ys-paynow-settings .ys-settings-section:first-of-type {
+    border-top: none;
+    padding-top: 0;
+    margin-top: 10px;
+}
+
+/* ============================================
+   回傳網址引導區塊樣式（設定頁面內嵌使用）
+   ============================================ */
+.ys-callback-url-guide {
+    background: #f8fafb;
+    border: 1px solid #c5d1d8;
+    border-radius: 8px;
+    padding: 20px;
+    max-width: 600px;
+}

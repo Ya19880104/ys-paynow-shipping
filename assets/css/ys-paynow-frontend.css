@@ -1,0 +1,513 @@
+/**
+ * PayNow Shipping Frontend CSS
+ * 莫蘭迪淡藍色系配色
+ */
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+
+/* 隱藏選擇器（非超取時使用） */
+.ys-paynow-hidden {
+    display: none !important;
+}
+
+/* ============================================
+   CSS Variables - 莫蘭迪淡藍灰配色
+   ============================================ */
+:root {
+    --ys-primary: #8fa8b8;
+    --ys-primary-hover: #7a95a6;
+    --ys-primary-light: #e8eff5;
+    --ys-border: #c5d1d8;
+    --ys-bg-light: #f5f8fa;
+    --ys-text: #333;
+    --ys-text-muted: #6b8a9a;
+    --ys-text-light: #888;
+}
+
+/* ============================================
+   結帳頁 - 超商選擇器區域
+   ============================================ */
+
+/* 外層包裝：確保在不同結帳頁佈局中正確顯示 */
+.ys-paynow-store-selector-wrapper {
+    width: 100%;
+    margin-top: 15px;
+}
+
+/* 選擇器容器 */
+.ys-paynow-store-selector {
+    width: 100%;
+}
+
+.ys-paynow-cvs-selector {
+    margin: 10px 0;
+}
+
+/* 選擇門市按鈕 */
+.ys-paynow-choose-cvs-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 20px;
+    background: var(--ys-primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ys-paynow-choose-cvs-btn:hover {
+    background: var(--ys-primary-hover);
+}
+
+/* 已選擇門市資訊區塊 - 參考 PayUni 樣式 */
+.ys-paynow-selected-store,
+.ys-paynow-cvs-info {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    background: #fff;
+    border: 2px solid #46b450;
+    border-radius: 10px;
+    margin-top: 12px;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(70, 180, 80, 0.1);
+}
+
+/* 右上角勾勾圖示 */
+.ys-paynow-selected-store::before {
+    content: "✓";
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #46b450;
+    color: #fff;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* 隱藏原本的勾勾圖示 div */
+.ys-paynow-selected-store .store-check-icon {
+    display: none;
+}
+
+.ys-paynow-selected-store .store-info {
+    line-height: 1.5;
+    text-align: left;
+    margin-bottom: 12px;
+    width: 100%;
+}
+
+/* 超商類型標籤 */
+.store-type-label {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--ys-primary, #8fa8b8);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ys-paynow-no-store .store-type-label {
+    background: var(--ys-text-muted, #6b8a9a);
+    margin-bottom: 8px;
+}
+
+.ys-paynow-selected-store .store-name {
+    font-weight: 600;
+    font-size: 15px;
+    color: #2c5530;
+    margin-bottom: 6px;
+}
+
+.ys-paynow-selected-store .store-address {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 6px;
+}
+
+.ys-paynow-selected-store .store-meta {
+    font-size: 12px;
+    color: var(--ys-text-light);
+}
+
+.ys-paynow-selected-store .store-id {
+    color: #888;
+    font-size: 11px;
+    background: #f5f5f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+/* 更換門市按鈕 */
+.ys-paynow-selected-store .ys-paynow-store-map-btn {
+    white-space: nowrap;
+    align-self: flex-start;
+    padding: 10px 20px;
+    background: var(--ys-primary, #8fa8b8);
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    text-align: center;
+}
+
+.ys-paynow-selected-store .ys-paynow-store-map-btn:hover {
+    background: var(--ys-primary-hover, #7a95a6);
+}
+
+/* 未選擇門市狀態 */
+.ys-paynow-no-store {
+    text-align: center;
+    padding: 24px 16px;
+    margin-top: 12px;
+    background: var(--ys-paynow-store-bg, var(--ys-bg-light));
+    border: 1px dashed var(--ys-paynow-store-border, var(--ys-border));
+    border-radius: 10px;
+}
+
+.ys-paynow-no-store .no-store-message {
+    color: var(--ys-text-muted);
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+/* 更換門市按鈕 */
+.ys-paynow-change-store-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #fff;
+    border: 1px solid var(--ys-border);
+    border-radius: 6px;
+    color: var(--ys-text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ys-paynow-change-store-btn:hover {
+    background: var(--ys-primary-light);
+    border-color: var(--ys-primary);
+    color: var(--ys-primary);
+}
+
+/* ============================================
+   物流狀態區塊 (新版卡片式設計)
+   ============================================ */
+.ys-logistics-card {
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    width: 100%;
+    padding: 24px;
+    box-sizing: border-box;
+    margin: 20px 0;
+    font-family: 'Noto Sans TC', sans-serif;
+}
+
+.ys-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #e8e8e8;
+    padding-bottom: 16px;
+}
+
+.ys-card-header h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--ys-text);
+    margin: 0;
+}
+
+.ys-refresh-btn {
+    background: none;
+    border: none;
+    color: #555;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.3s;
+    padding: 5px;
+}
+
+.ys-refresh-btn:hover {
+    color: var(--ys-primary);
+}
+
+.ys-refresh-btn .fa-sync-alt.loading,
+.ys-refresh-btn.loading .fa-sync-alt {
+    animation: ys-spin 1s linear infinite;
+}
+
+@keyframes ys-spin {
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.ys-status-section {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.ys-current-status {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    transition: color 0.3s;
+}
+
+.ys-status-time {
+    font-size: 14px;
+    color: var(--ys-text-light);
+}
+
+/* 狀態顏色 - 莫蘭迪配色 */
+.ys-logistics-card.status-pending .ys-current-status {
+    color: var(--ys-primary);
+}
+
+.ys-logistics-card.status-shipping .ys-current-status {
+    color: #b8860b;
+}
+
+.ys-logistics-card.status-arrived .ys-current-status {
+    color: #7b1fa2;
+}
+
+.ys-logistics-card.status-completed .ys-current-status {
+    color: #6b8a9a;
+}
+
+/* 進度條 */
+.ys-progress-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    position: relative;
+    padding: 0 10px;
+}
+
+.ys-progress-line {
+    position: absolute;
+    top: 14px;
+    left: 15%;
+    right: 15%;
+    height: 3px;
+    background-color: #e0e0e0;
+    z-index: 1;
+}
+
+.ys-progress-line-active {
+    position: absolute;
+    top: 14px;
+    left: 15%;
+    height: 3px;
+    background-color: var(--ys-primary);
+    z-index: 1;
+    transition: width 0.5s ease-in-out;
+}
+
+.ys-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+    width: 25%;
+}
+
+.ys-step-circle {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background-color: #e0e0e0;
+    border: 4px solid #fff;
+    margin-bottom: 8px;
+    transition: background-color 0.3s;
+    box-sizing: content-box;
+}
+
+.ys-step.active .ys-step-circle {
+    background-color: var(--ys-primary);
+}
+
+.ys-step.active .ys-step-label {
+    font-weight: 700;
+    color: var(--ys-text);
+}
+
+.ys-step-label {
+    font-size: 12px;
+    color: var(--ys-text-light);
+    text-align: center;
+}
+
+/* 詳細資訊 */
+.ys-details-section ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.ys-details-section li {
+    display: flex;
+    align-items: flex-start;
+    padding: 14px 0;
+    font-size: 14px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.ys-details-section li:last-child {
+    border-bottom: none;
+}
+
+.ys-icon {
+    width: 20px;
+    text-align: center;
+    margin-right: 16px;
+    color: #555;
+    margin-top: 2px;
+}
+
+.ys-label {
+    font-weight: 500;
+    color: #666;
+    width: 80px;
+    flex-shrink: 0;
+}
+
+.ys-value {
+    color: var(--ys-text);
+    flex: 1;
+    word-break: break-all;
+}
+
+.ys-copyable {
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.ys-copyable:hover {
+    color: var(--ys-primary);
+}
+
+/* Toast 通知 */
+.ys-toast-notification {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.75);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s, bottom 0.3s;
+    pointer-events: none;
+}
+
+.ys-toast-notification.show {
+    opacity: 1;
+    bottom: 30px;
+}
+
+/* ============================================
+   物流狀態標籤樣式 (My Account / Admin)
+   ============================================ */
+
+.ys-shipping-status-cell {
+    line-height: 1.5;
+}
+
+.ys-status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+/* 待建立 - 灰色 */
+.ys-status-pending {
+    background: #f0f4f7;
+    color: #7a8b95;
+}
+
+/* 等待寄件 - 淡藍 */
+.ys-status-waiting {
+    background: #e8eff5;
+    color: #6b8a9a;
+}
+
+/* 已建立 - 藍色 */
+.ys-status-created {
+    background: #e1f0ff;
+    color: #0073aa;
+}
+
+/* 配送中 - 橘黃 */
+.ys-status-shipping {
+    background: #fef6e8;
+    color: #b8860b;
+}
+
+/* 到店待取 - 紫色 */
+.ys-status-arrived {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+/* 已完成 - 灰藍 */
+.ys-status-completed {
+    background: #e8eff5;
+    color: #6b8a9a;
+}
+
+/* 已取消/退貨 - 紅色 */
+.ys-status-cancelled {
+    background: #ffebee;
+    color: #c62828;
+}
+
+/* 預設 - 灰色 */
+.ys-status-default {
+    background: #f0f4f7;
+    color: #7a8b95;
+}
+
+.ys-status-na {
+    color: #999;
+}

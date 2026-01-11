@@ -1,0 +1,20 @@
+{
+    "name": "yangsheep/ys-paynow-shipping",
+    "description": "YS PayNow Shipping for WooCommerce - 整合 PayNow 物流服務",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0+",
+    "authors": [
+        {
+            "name": "YANGSHEEP DESIGN",
+            "homepage": "https://yangsheep.com.tw"
+        }
+    ],
+    "require": {
+        "php": ">=7.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "YangSheep\\PayNow\\Shipping\\": "src/"
+        }
+    }
+}
