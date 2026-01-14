@@ -137,6 +137,8 @@ class YSOrderMetaBox {
 		$validation_no   = $order->get_meta( YSOrderMeta::ValidationNo );
 		$delivery_status = $order->get_meta( YSOrderMeta::DeliveryStatus );
 		$status_update   = $order->get_meta( YSOrderMeta::StatusUpdateAt );
+		$store_date      = $order->get_meta( YSOrderMeta::StoreDate );
+		$store_time      = $order->get_meta( YSOrderMeta::StoreTime );
 
 		wp_nonce_field( 'ys_paynow_meta_box', 'ys_paynow_meta_box_nonce' );
 		?>
@@ -183,6 +185,18 @@ class YSOrderMetaBox {
 					<?php echo esc_html( $delivery_status ); ?>
 					<?php if ( ! empty( $status_update ) ) : ?>
 						<br><small><?php esc_html_e( '更新時間：', 'ys-paynow-shipping' ); ?><?php echo esc_html( $status_update ); ?></small>
+					<?php endif; ?>
+				</p>
+			<?php endif; ?>
+
+			<?php if ( ! empty( $store_date ) || ! empty( $store_time ) ) : ?>
+				<p>
+					<strong><?php esc_html_e( '到店資訊：', 'ys-paynow-shipping' ); ?></strong>
+					<?php if ( ! empty( $store_date ) ) : ?>
+						<?php echo esc_html( $store_date ); ?>
+					<?php endif; ?>
+					<?php if ( ! empty( $store_time ) ) : ?>
+						<?php echo esc_html( $store_time ); ?>
 					<?php endif; ?>
 				</p>
 			<?php endif; ?>

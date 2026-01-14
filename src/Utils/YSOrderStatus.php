@@ -107,15 +107,53 @@ class YSOrderStatus {
 
 	/**
 	 * 載入後台狀態樣式
+	 * 使用莫蘭迪配色風格
 	 */
 	public static function enqueue_admin_styles() {
-		// 這裡使用內聯樣式以簡化流程，未來可移至獨立 CSS 檔案
+		$screen = get_current_screen();
+
+		// 只在訂單相關頁面載入
+		$allowed_screens = array(
+			'edit-shop_order',
+			'woocommerce_page_wc-orders',
+			'shop_order',
+		);
+
+		if ( ! $screen || ! in_array( $screen->id, $allowed_screens, true ) ) {
+			return;
+		}
+
+		// 註冊一個空的 CSS handle，然後附加 inline style
+		wp_register_style( 'ys-paynow-order-status', false );
+		wp_enqueue_style( 'ys-paynow-order-status' );
+
 		$css = "
-			.order-status.status-shipping-ordered { background: #e5e5e5; color: #555; }
-			.order-status.status-shipping-transit { background: #ffba00; color: #fff; }
-			.order-status.status-shipping-arrived { background: #7ad03a; color: #fff; }
-			.order-status.status-shipping-returned { background: #a00; color: #fff; }
+			/* YS PayNow 自訂訂單狀態標籤顏色 - 莫蘭迪配色 */
+			.order-status.status-shipping-ordered {
+				background: #e8eff5 !important;
+				color: #6b8a9a !important;
+			}
+			.order-status.status-shipping-transit {
+				background: #fef6e8 !important;
+				color: #b8860b !important;
+			}
+			.order-status.status-shipping-arrived {
+				background: #f3e5f5 !important;
+				color: #7b1fa2 !important;
+			}
+			.order-status.status-shipping-returned {
+				background: #ffebee !important;
+				color: #c62828 !important;
+			}
+			.order-status.status-shipping-ordered,
+			.order-status.status-shipping-transit,
+			.order-status.status-shipping-arrived,
+			.order-status.status-shipping-returned {
+				font-weight: 500 !important;
+				border-radius: 4px !important;
+			}
 		";
-		wp_add_inline_style( 'woocommerce_admin_styles', $css );
+
+		wp_add_inline_style( 'ys-paynow-order-status', $css );
 	}
 }

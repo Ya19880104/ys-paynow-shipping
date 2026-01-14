@@ -224,22 +224,8 @@ class YSStoreSelector {
 			return false;
 		}
 
-		// YS PayNow 超取的 method ID 格式
-		$ys_paynow_cvs_patterns = array(
-			'ys_paynow_shipping_711',
-			'ys_paynow_shipping_family',
-			'ys_paynow_shipping_hilife',
-			'ys_paynow_shipping_okmart',
-		);
-
-		$method_id_lower = strtolower( $method_id );
-		foreach ( $ys_paynow_cvs_patterns as $pattern ) {
-			if ( strpos( $method_id_lower, $pattern ) !== false ) {
-				return true;
-			}
-		}
-
-		return false;
+		// 使用主類別的 needs_cvs 方法，確保邏輯一致
+		return YSPaynowShipping::needs_cvs( $method_id );
 	}
 
 	/**
@@ -250,10 +236,21 @@ class YSStoreSelector {
 	 */
 	private static function get_method_id_from_service( $logistic_service_id ) {
 		// logistic_service_id 對應到 method_id 的映射
+		// 注意：此映射需與 YSPaynowShipping::get_logistic_service_id() 保持同步
 		$mapping = array(
-			'01' => 'ys_paynow_shipping_711',      // 7-ELEVEN
-			'03' => 'ys_paynow_shipping_family',   // 全家
-			'05' => 'ys_paynow_shipping_hilife',   // 萊爾富
+			// C2C 店到店
+			YSLogisticService::SEVEN   => 'ys_paynow_shipping_711',         // 01 -> 7-ELEVEN
+			YSLogisticService::FAMI    => 'ys_paynow_shipping_family',      // 03 -> 全家
+			YSLogisticService::HILIFE  => 'ys_paynow_shipping_hilife',      // 05 -> 萊爾富
+			// B2C 大宗寄倉
+			YSLogisticService::SEVENBULK => 'ys_paynow_shipping_711_bulk',    // 02 -> 7-11 大宗
+			YSLogisticService::FAMIBULK  => 'ys_paynow_shipping_family_bulk', // 04 -> 全家大宗
+			// 冷凍 C2C
+			YSLogisticService::SEVENFROZEN_C2C => 'ys_paynow_shipping_711_frozen',    // 21 -> 7-11 冷凍 C2C
+			YSLogisticService::FAMIFROZEN_C2C  => 'ys_paynow_shipping_family_frozen', // 23 -> 全家冷凍 C2C
+			// 冷凍 B2C (大宗冷凍)
+			YSLogisticService::SEVENFROZEN => 'ys_paynow_shipping_711_bulk_frozen',    // 22 -> 7-11 冷凍 B2C
+			YSLogisticService::FAMIFROZEN  => 'ys_paynow_shipping_family_bulk_frozen', // 24 -> 全家冷凍 B2C
 		);
 
 		return isset( $mapping[ $logistic_service_id ] ) ? $mapping[ $logistic_service_id ] : '';
@@ -532,16 +529,22 @@ class YSStoreSelector {
 		$store_addr = isset( $_POST['storeaddress'] ) ? sanitize_text_field( wp_unslash( $_POST['storeaddress'] ) ) : '';
 		$store_tel  = isset( $_POST['storetel'] ) ? sanitize_text_field( wp_unslash( $_POST['storetel'] ) ) : '';
 
+		// ★ 全家冷凍專用欄位：保留編號、預計運送日期
+		$reserved_no = isset( $_POST['ReservedNo'] ) ? sanitize_text_field( wp_unslash( $_POST['ReservedNo'] ) ) : '';
+		$ship_date   = isset( $_POST['ShipDate'] ) ? sanitize_text_field( wp_unslash( $_POST['ShipDate'] ) ) : '';
+
 		// ★ PayNow 地圖不會回傳 LogisticServiceID 和 method_id，需從 URL query string 取得
 		$logistic_service_id = isset( $_GET['logistic_service'] ) ? sanitize_text_field( wp_unslash( $_GET['logistic_service'] ) ) : '';
 		$method_id           = isset( $_GET['method_id'] ) ? sanitize_text_field( wp_unslash( $_GET['method_id'] ) ) : '';
 
 		YSPaynowShipping::log( sprintf(
-			'CVS Map Return: storeid=%s, storename=%s, logistic_service_id=%s, method_id=%s (from URL)',
+			'CVS Map Return: storeid=%s, storename=%s, logistic_service_id=%s, method_id=%s, reserved_no=%s, ship_date=%s',
 			$store_id,
 			$store_name,
 			$logistic_service_id ?: '(empty)',
-			$method_id ?: '(empty)'
+			$method_id ?: '(empty)',
+			$reserved_no ?: '(empty)',
+			$ship_date ?: '(empty)'
 		) );
 
 		if ( empty( $store_id ) ) {
@@ -557,6 +560,8 @@ class YSStoreSelector {
 			'address'             => $store_addr,
 			'tel'                 => $store_tel,
 			'logistic_service_id' => $logistic_service_id,
+			'reserved_no'         => $reserved_no,
+			'ship_date'           => $ship_date,
 		);
 
 		// 儲存 PAYNOW 的門市資料
@@ -604,7 +609,7 @@ class YSStoreSelector {
 
 	/**
 	 * 處理後台超商地圖回傳 (Admin)
-	 * 
+	 *
 	 * 使用 postMessage 將資料傳回 opener 視窗，而非重導向至結帳頁
 	 *
 	 * @return void
@@ -616,16 +621,22 @@ class YSStoreSelector {
 		$store_addr = isset( $_POST['storeaddress'] ) ? sanitize_text_field( wp_unslash( $_POST['storeaddress'] ) ) : '';
 		$store_tel  = isset( $_POST['storetel'] ) ? sanitize_text_field( wp_unslash( $_POST['storetel'] ) ) : '';
 
+		// ★ 全家冷凍專用欄位：保留編號、預計運送日期
+		$reserved_no = isset( $_POST['ReservedNo'] ) ? sanitize_text_field( wp_unslash( $_POST['ReservedNo'] ) ) : '';
+		$ship_date   = isset( $_POST['ShipDate'] ) ? sanitize_text_field( wp_unslash( $_POST['ShipDate'] ) ) : '';
+
 		// ★ PayNow 地圖不會回傳 LogisticServiceID 和 method_id，需從 URL query string 取得
 		$logistic_service_id = isset( $_GET['logistic_service'] ) ? sanitize_text_field( wp_unslash( $_GET['logistic_service'] ) ) : '';
 		$method_id           = isset( $_GET['method_id'] ) ? sanitize_text_field( wp_unslash( $_GET['method_id'] ) ) : '';
 
 		YSPaynowShipping::log( sprintf(
-			'Admin CVS Map Return: storeid=%s, storename=%s, logistic_service_id=%s, method_id=%s (from URL)',
+			'Admin CVS Map Return: storeid=%s, storename=%s, logistic_service_id=%s, method_id=%s, reserved_no=%s, ship_date=%s',
 			$store_id,
 			$store_name,
 			$logistic_service_id ?: '(empty)',
-			$method_id ?: '(empty)'
+			$method_id ?: '(empty)',
+			$reserved_no ?: '(empty)',
+			$ship_date ?: '(empty)'
 		) );
 
 		// 建立 postMessage 資料
@@ -636,6 +647,8 @@ class YSStoreSelector {
 			'store_tel'           => $store_tel,
 			'logistic_service_id' => $logistic_service_id,
 			'method_id'           => $method_id,
+			'reserved_no'         => $reserved_no,
+			'ship_date'           => $ship_date,
 		) );
 
 		// 輸出 HTML 頁面，使用 postMessage 傳送資料至 opener
@@ -884,6 +897,8 @@ class YSStoreSelector {
 			'address'             => $store_data['address'] ?? '',
 			'tel'                 => $store_data['tel'] ?? '',
 			'logistic_service_id' => $store_data['logistic_service_id'] ?? '',
+			'reserved_no'         => $store_data['reserved_no'] ?? '',
+			'ship_date'           => $store_data['ship_date'] ?? '',
 		);
 
 		// 儲存統一的 JSON 格式
@@ -894,6 +909,14 @@ class YSStoreSelector {
 		$order->update_meta_data( YSOrderMeta::StoreName, $store_data['name'] ?? '' );
 		$order->update_meta_data( YSOrderMeta::StoreAddr, $store_data['address'] ?? '' );
 		$order->update_meta_data( YSOrderMeta::StoreTel, $store_data['tel'] ?? '' );
+
+		// ★ 全家冷凍專用欄位
+		if ( ! empty( $store_data['reserved_no'] ) ) {
+			$order->update_meta_data( YSOrderMeta::ReservedNo, $store_data['reserved_no'] );
+		}
+		if ( ! empty( $store_data['ship_date'] ) ) {
+			$order->update_meta_data( YSOrderMeta::ShipDate, $store_data['ship_date'] );
+		}
 
 		// ★ 儲存收件人資訊（用於物流標籤列印）
 		$order->update_meta_data( '_ys_paynow_recipient_name', $recipient_info['name'] );

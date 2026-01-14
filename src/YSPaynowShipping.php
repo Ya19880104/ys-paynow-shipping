@@ -107,7 +107,7 @@ class YSPaynowShipping {
 		add_filter( 'woocommerce_get_settings_pages', array( __CLASS__, 'add_settings_page' ), 15 );
 
 		// 結帳頁相關 hooks
-		add_filter( 'woocommerce_checkout_fields', array( __CLASS__, 'add_cvs_fields' ) );
+		// 注意：add_cvs_fields 已棄用，改由 JS 動態建立 hidden fields
 		// ★ 確保 shipping_phone 欄位存在並強制顯示
 		add_filter( 'woocommerce_checkout_fields', array( __CLASS__, 'ensure_shipping_phone_field' ), 5 );
 		// 超商選擇器由 YSStoreSelector::maybe_display_store_selector() 使用 woocommerce_after_shipping_rate hook 渲染
@@ -260,16 +260,12 @@ class YSPaynowShipping {
 	/**
 	 * 新增超商欄位至結帳表單
 	 *
-	 * 注意：舊版使用 ys_cvs_store_* 欄位，現已改用 JS 動態建立的
-	 * ys_paynow_selected_store_id 和 ys_paynow_selected_store_data 欄位。
-	 * 此方法保留但不再添加欄位，避免在 shipping fields wrapper 中產生多餘的隱藏欄位。
-	 *
+	 * @deprecated 1.1.0 此函數已棄用，改由 JS 動態建立 hidden fields
 	 * @param array $fields 結帳欄位陣列。
 	 * @return array 修改後的欄位陣列。
 	 */
 	public static function add_cvs_fields( $fields ) {
-		// 不再添加欄位到 shipping fields，改由 JS 在 form 層級動態建立
-		// 這樣可以避免隱藏欄位被渲染在 shipping fields wrapper 中造成版面問題
+		_deprecated_function( __METHOD__, '1.1.0', 'JS 動態建立 hidden fields' );
 		return $fields;
 	}
 
@@ -332,33 +328,14 @@ class YSPaynowShipping {
 	/**
 	 * 在運送方式後顯示「選擇超商」按鈕
 	 *
+	 * @deprecated 1.1.0 此函數已棄用，改用 YSStoreSelector::display_store_selector_after_shipping()
 	 * @param \WC_Shipping_Rate $method 運送方式物件。
 	 * @param int               $index  索引。
 	 * @return void
 	 */
 	public static function display_store_selector_button( $method, $index ) {
-		// 僅在結帳頁顯示
-		if ( ! is_checkout() ) {
-			return;
-		}
-
-		// 檢查是否為需要選擇超商的運送方式
-		$method_id = $method->get_method_id();
-		if ( ! self::needs_cvs( $method_id ) ) {
-			return;
-		}
-
-		// 取得物流服務 ID
-		$logistic_service_id = self::get_logistic_service_id( $method_id );
-
-		?>
-		<div class="ys-paynow-cvs-selector" data-method-id="<?php echo esc_attr( $method_id ); ?>" data-logistic-service="<?php echo esc_attr( $logistic_service_id ); ?>">
-			<button type="button" class="button ys-paynow-choose-cvs-btn">
-				<?php esc_html_e( '選擇超商', 'ys-paynow-shipping' ); ?>
-			</button>
-			<div class="ys-paynow-cvs-info"></div>
-		</div>
-		<?php
+		_deprecated_function( __METHOD__, '1.1.0', 'YSStoreSelector::display_store_selector_after_shipping()' );
+		// 此函數已棄用，不執行任何操作
 	}
 
 	/**
@@ -1100,7 +1077,7 @@ class YSPaynowShipping {
 	}
 
 	/**
-	 * 感謝頁清除 localStorage
+	 * 感謝頁清除前端儲存的資料
 	 *
 	 * @param int $order_id 訂單 ID。
 	 * @return void
@@ -1108,8 +1085,13 @@ class YSPaynowShipping {
 	public static function clear_checkout_storage( $order_id ) {
 		?>
 		<script>
+		// 清除 localStorage（舊版門市資料 key）
 		if ( typeof localStorage !== 'undefined' ) {
 			localStorage.removeItem( 'ys_paynow_cvs_store' );
+		}
+		// 清除 sessionStorage（結帳欄位暫存）
+		if ( typeof sessionStorage !== 'undefined' ) {
+			sessionStorage.removeItem( 'ys_paynow_checkout_fields' );
 		}
 		</script>
 		<?php
@@ -1157,9 +1139,19 @@ class YSPaynowShipping {
 				'cvs_map_url' => self::$cvs_map_url,
 				'nonce'       => wp_create_nonce( 'ys-paynow-shipping' ),
 				'service_mapping' => array(
-					'ys_paynow_shipping_711'    => YSLogisticService::SEVEN,
-					'ys_paynow_shipping_family' => YSLogisticService::FAMI,
-					'ys_paynow_shipping_hilife' => YSLogisticService::HILIFE,
+					// C2C 店到店
+					'ys_paynow_shipping_711'              => YSLogisticService::SEVEN,
+					'ys_paynow_shipping_family'           => YSLogisticService::FAMI,
+					'ys_paynow_shipping_hilife'           => YSLogisticService::HILIFE,
+					// B2C 大宗寄倉
+					'ys_paynow_shipping_711_bulk'         => YSLogisticService::SEVENBULK,
+					'ys_paynow_shipping_family_bulk'      => YSLogisticService::FAMIBULK,
+					// 冷凍 C2C
+					'ys_paynow_shipping_711_frozen'       => YSLogisticService::SEVENFROZEN_C2C,
+					'ys_paynow_shipping_family_frozen'    => YSLogisticService::FAMIFROZEN_C2C,
+					// 冷凍 B2C (大宗冷凍)
+					'ys_paynow_shipping_711_bulk_frozen'  => YSLogisticService::SEVENFROZEN,
+					'ys_paynow_shipping_family_bulk_frozen' => YSLogisticService::FAMIFROZEN,
 				),
 				// 超商取貨結帳行為設定
 				'cvs_settings' => array(

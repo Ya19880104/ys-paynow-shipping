@@ -79,6 +79,8 @@ class YSMyAccount {
 
 		$logistic_number = $order->get_meta( YSOrderMeta::LogisticNumber );
 		$delivery_status = $order->get_meta( YSOrderMeta::DeliveryStatus );
+		$store_date      = $order->get_meta( YSOrderMeta::StoreDate );
+		$store_time      = $order->get_meta( YSOrderMeta::StoreTime );
 		$service_name    = YSLogisticService::get_service_name( $logistic_service_id );
 
 		echo '<div class="ys-shipping-status-cell">';
@@ -90,6 +92,12 @@ class YSMyAccount {
 				echo '<span class="ys-status-badge ' . esc_attr( $status_class ) . '">' . esc_html( $delivery_status ) . '</span>';
 			} else {
 				echo '<span class="ys-status-badge ys-status-created">' . esc_html__( '已建立', 'ys-paynow-shipping' ) . '</span>';
+			}
+
+			// 顯示到店日期/時間
+			if ( ! empty( $store_date ) || ! empty( $store_time ) ) {
+				$store_info = trim( $store_date . ' ' . $store_time );
+				echo '<br><small style="color: #666;">' . esc_html__( '到店：', 'ys-paynow-shipping' ) . esc_html( $store_info ) . '</small>';
 			}
 
 		} else {

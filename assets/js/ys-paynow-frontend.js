@@ -12,12 +12,21 @@
     const YSPaynowStoreSelector = {
         // Configuration
         config: {
-            debug: true, // ★ 暫時開啟除錯模式
+            debug: false, // 生產環境關閉除錯模式
             namespace: 'ys_paynow_store',
             cvsMethodPrefixes: [
+                // C2C 店到店
                 'ys_paynow_shipping_711',
                 'ys_paynow_shipping_family',
-                'ys_paynow_shipping_hilife'
+                'ys_paynow_shipping_hilife',
+                // B2C 大宗寄倉 (需在基本前綴之後，因為使用 indexOf 匹配)
+                'ys_paynow_shipping_711_bulk',
+                'ys_paynow_shipping_family_bulk',
+                // 冷凍 (C2C 和 B2C)
+                'ys_paynow_shipping_711_frozen',
+                'ys_paynow_shipping_family_frozen',
+                'ys_paynow_shipping_711_bulk_frozen',
+                'ys_paynow_shipping_family_bulk_frozen'
             ],
             checkDelay: 200
         },
@@ -1162,10 +1171,13 @@
                         }
 
                         // Update Steps
+                        // PHP 步驟從 1 開始，JS index 從 0 開始
+                        // current_step = 2 表示「商品準備中」，需要讓 index 0 和 1 都 active
                         if (data.current_step) {
                             var stepIndex = parseInt(data.current_step);
                             $card.find('.ys-step').each(function (index) {
-                                if (index < stepIndex) {
+                                // index + 1 <= current_step 表示該步驟應該 active
+                                if (index + 1 <= stepIndex) {
                                     $(this).addClass('active');
                                 } else {
                                     $(this).removeClass('active');

@@ -193,16 +193,16 @@ class YSOrderListTable {
 			return;
 		}
 
-		// 定義要顯示的按鈕
+		// 定義要顯示的按鈕 - 主要超商類別
 		$buttons = array(
 			array(
 				'label'   => '7-11',
-				'service' => YSLogisticService::SEVEN,
+				'service' => 'seven', // 使用分類識別符
 				'icon'    => 'dashicons-store',
 			),
 			array(
 				'label'   => '全家',
-				'service' => YSLogisticService::FAMI,
+				'service' => 'family',
 				'icon'    => 'dashicons-store',
 			),
 			array(
@@ -214,6 +214,46 @@ class YSOrderListTable {
 				'label'   => '黑貓',
 				'service' => YSLogisticService::TCAT,
 				'icon'    => 'dashicons-car',
+			),
+		);
+
+		// 7-11 子類型選項
+		$seven_options = array(
+			array(
+				'label'   => '7-11 交貨便 (C2C)',
+				'service' => YSLogisticService::SEVEN,
+			),
+			array(
+				'label'   => '7-11 大宗 (B2C)',
+				'service' => YSLogisticService::SEVENBULK,
+			),
+			array(
+				'label'   => '7-11 冷凍 (C2C)',
+				'service' => YSLogisticService::SEVENFROZEN_C2C,
+			),
+			array(
+				'label'   => '7-11 冷凍 (B2C)',
+				'service' => YSLogisticService::SEVENFROZEN,
+			),
+		);
+
+		// 全家子類型選項
+		$family_options = array(
+			array(
+				'label'   => '全家店到店 (C2C)',
+				'service' => YSLogisticService::FAMI,
+			),
+			array(
+				'label'   => '全家大宗 (B2C)',
+				'service' => YSLogisticService::FAMIBULK,
+			),
+			array(
+				'label'   => '全家冷凍 (C2C)',
+				'service' => YSLogisticService::FAMIFROZEN_C2C,
+			),
+			array(
+				'label'   => '全家冷凍 (B2C)',
+				'service' => YSLogisticService::FAMIFROZEN,
 			),
 		);
 		?>
@@ -229,6 +269,12 @@ class YSOrderListTable {
 					<!-- 篩選條件 -->
 					<div class="ys-paynow-filters" style="margin-bottom: 15px; padding: 10px; background: #f9f9f9; border-radius: 4px;">
 						<div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
+							<!-- 超商子類型選擇器 (僅 7-11 和全家顯示) -->
+							<div class="ys-filter-group ys-subtype-filter" style="display: none;">
+								<label style="font-weight: 600; margin-right: 5px;"><?php esc_html_e( '服務類型：', 'ys-paynow-shipping' ); ?></label>
+								<select id="ys-service-subtype" class="ys-paynow-filter-select">
+								</select>
+							</div>
 							<div class="ys-filter-group">
 								<label style="font-weight: 600; margin-right: 5px;"><?php esc_html_e( '日期篩選：', 'ys-paynow-shipping' ); ?></label>
 								<select id="ys-date-filter" class="ys-paynow-filter-select">
@@ -240,10 +286,27 @@ class YSOrderListTable {
 							<div class="ys-filter-group">
 								<label style="font-weight: 600; margin-right: 5px;"><?php esc_html_e( '列印狀態：', 'ys-paynow-shipping' ); ?></label>
 								<select id="ys-print-status-filter" class="ys-paynow-filter-select">
-									<option value="unprinted" selected><?php esc_html_e( '未列印', 'ys-paynow-shipping' ); ?></option>
+									<option value="all" selected><?php esc_html_e( '全部', 'ys-paynow-shipping' ); ?></option>
+									<option value="unprinted"><?php esc_html_e( '未列印', 'ys-paynow-shipping' ); ?></option>
 									<option value="printed"><?php esc_html_e( '已列印', 'ys-paynow-shipping' ); ?></option>
-									<option value="all"><?php esc_html_e( '全部', 'ys-paynow-shipping' ); ?></option>
 								</select>
+							</div>
+							<div class="ys-filter-group">
+								<label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+									<input type="checkbox" id="ys-has-logistic-no-filter" checked>
+									<span style="font-weight: 600;"><?php esc_html_e( '只顯示已取號', 'ys-paynow-shipping' ); ?></span>
+								</label>
+							</div>
+							<div class="ys-filter-group ys-order-status-filter">
+								<span style="font-weight: 600; margin-right: 5px;"><?php esc_html_e( '訂單狀態：', 'ys-paynow-shipping' ); ?></span>
+								<label style="display: inline-flex; align-items: center; gap: 3px; cursor: pointer; margin-right: 10px;">
+									<input type="checkbox" name="ys-order-status[]" value="processing" checked>
+									<span><?php esc_html_e( '處理中', 'ys-paynow-shipping' ); ?></span>
+								</label>
+								<label style="display: inline-flex; align-items: center; gap: 3px; cursor: pointer;">
+									<input type="checkbox" name="ys-order-status[]" value="wc-shipping">
+									<span><?php esc_html_e( '已安排出貨', 'ys-paynow-shipping' ); ?></span>
+								</label>
 							</div>
 							<button type="button" class="button ys-paynow-refresh-orders">
 								<span class="dashicons dashicons-update" style="vertical-align: text-top;"></span>
@@ -302,6 +365,19 @@ class YSOrderListTable {
 
 		<script type="text/javascript">
 		jQuery(document).ready(function($) {
+			// 子類型選項定義
+			var sevenOptions = [
+				<?php foreach ( $seven_options as $opt ) : ?>
+				{ label: '<?php echo esc_html( $opt['label'] ); ?>', service: '<?php echo esc_attr( $opt['service'] ); ?>' },
+				<?php endforeach; ?>
+			];
+
+			var familyOptions = [
+				<?php foreach ( $family_options as $opt ) : ?>
+				{ label: '<?php echo esc_html( $opt['label'] ); ?>', service: '<?php echo esc_attr( $opt['service'] ); ?>' },
+				<?php endforeach; ?>
+			];
+
 			// Add batch print buttons - 使用 div 獨立一行
 			var buttonsHtml = '<div class="ys-paynow-batch-print-wrapper">' +
 				'<span class="ys-paynow-batch-print-label">PayNow:</span>';
@@ -345,6 +421,7 @@ class YSOrderListTable {
 
 			// Handlers
 			var currentService = '';
+			var currentServiceCategory = ''; // 'seven', 'family', or direct service code
 			var currentServiceName = '';
 
 			// 將 Modal 移動到 #wpbody-content 內
@@ -353,17 +430,54 @@ class YSOrderListTable {
 				$modal.appendTo('#wpbody-content');
 			}
 
+			// 更新子類型下拉選單
+			function updateSubtypeOptions(category) {
+				var $subtypeFilter = $('.ys-subtype-filter');
+				var $select = $('#ys-service-subtype');
+				$select.empty();
+
+				var options = [];
+				if (category === 'seven') {
+					options = sevenOptions;
+				} else if (category === 'family') {
+					options = familyOptions;
+				}
+
+				if (options.length > 0) {
+					options.forEach(function(opt) {
+						$select.append('<option value="' + opt.service + '">' + opt.label + '</option>');
+					});
+					$subtypeFilter.show();
+					currentService = options[0].service; // 預設選第一個
+				} else {
+					$subtypeFilter.hide();
+				}
+			}
+
 			// Open Modal
 			$(document).on('click', '.ys-paynow-batch-print-btn', function() {
-				currentService = $(this).data('service');
+				currentServiceCategory = $(this).data('service');
 				currentServiceName = $(this).text().trim();
+
+				// 如果是 7-11 或全家，顯示子類型選擇器
+				if (currentServiceCategory === 'seven' || currentServiceCategory === 'family') {
+					updateSubtypeOptions(currentServiceCategory);
+				} else {
+					// 直接使用服務代碼
+					currentService = currentServiceCategory;
+					$('.ys-subtype-filter').hide();
+				}
 
 				$('#ys-paynow-batch-print-modal').addClass('ys-modal-open');
 				$('#ys-paynow-batch-print-modal .ys-paynow-modal-title').text('<?php esc_html_e( '批次列印', 'ys-paynow-shipping' ); ?>: ' + currentServiceName);
 
 				// Reset filters to defaults
 				$('#ys-date-filter').val('today');
-				$('#ys-print-status-filter').val('unprinted');
+				$('#ys-print-status-filter').val('all');
+				$('#ys-has-logistic-no-filter').prop('checked', true);
+				// 訂單狀態預設勾選「處理中」
+				$('input[name="ys-order-status[]"][value="processing"]').prop('checked', true);
+				$('input[name="ys-order-status[]"][value="wc-shipping"]').prop('checked', false);
 
 				loadOrders(currentService);
 			});
@@ -373,8 +487,24 @@ class YSOrderListTable {
 				$('#ys-paynow-batch-print-modal').removeClass('ys-modal-open');
 			});
 
+			// 子類型選擇變更
+			$('#ys-service-subtype').on('change', function() {
+				currentService = $(this).val();
+				loadOrders(currentService);
+			});
+
 			// Filter change handlers
 			$('#ys-date-filter, #ys-print-status-filter').on('change', function() {
+				loadOrders(currentService);
+			});
+
+			// 「只顯示已取號」勾選變更
+			$('#ys-has-logistic-no-filter').on('change', function() {
+				loadOrders(currentService);
+			});
+
+			// 訂單狀態 checkbox 變更
+			$(document).on('change', 'input[name="ys-order-status[]"]', function() {
 				loadOrders(currentService);
 			});
 
@@ -397,6 +527,13 @@ class YSOrderListTable {
 				// Get filter values
 				var dateFilter = $('#ys-date-filter').val();
 				var printStatusFilter = $('#ys-print-status-filter').val();
+				var hasLogisticNoOnly = $('#ys-has-logistic-no-filter').is(':checked') ? '1' : '0';
+
+				// 取得勾選的訂單狀態
+				var orderStatuses = [];
+				$('input[name="ys-order-status[]"]:checked').each(function() {
+					orderStatuses.push($(this).val());
+				});
 
 				$.ajax({
 					url: '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>',
@@ -407,7 +544,9 @@ class YSOrderListTable {
 						service: service,
 						selected_ids: selectedIds,
 						date_filter: dateFilter,
-						print_status: printStatusFilter
+						print_status: printStatusFilter,
+						has_logistic_no_only: hasLogisticNoOnly,
+						order_statuses: orderStatuses
 					},
 					success: function(response) {
 						if (response.success && response.data) {
@@ -765,10 +904,13 @@ class YSOrderListTable {
 	public static function ajax_get_unprinted_orders() {
 		check_ajax_referer( 'ys-paynow-batch-print', 'nonce' );
 
-		$service       = isset( $_POST['service'] ) ? sanitize_text_field( wp_unslash( $_POST['service'] ) ) : '';
-		$selected_ids  = isset( $_POST['selected_ids'] ) ? array_map( 'absint', $_POST['selected_ids'] ) : array();
-		$date_filter   = isset( $_POST['date_filter'] ) ? sanitize_text_field( wp_unslash( $_POST['date_filter'] ) ) : 'today';
-		$print_status  = isset( $_POST['print_status'] ) ? sanitize_text_field( wp_unslash( $_POST['print_status'] ) ) : 'unprinted';
+		$service              = isset( $_POST['service'] ) ? sanitize_text_field( wp_unslash( $_POST['service'] ) ) : '';
+		$selected_ids         = isset( $_POST['selected_ids'] ) ? array_map( 'absint', $_POST['selected_ids'] ) : array();
+		$date_filter          = isset( $_POST['date_filter'] ) ? sanitize_text_field( wp_unslash( $_POST['date_filter'] ) ) : 'today';
+		$print_status         = isset( $_POST['print_status'] ) ? sanitize_text_field( wp_unslash( $_POST['print_status'] ) ) : 'all';
+		$has_logistic_no_only = isset( $_POST['has_logistic_no_only'] ) && '1' === $_POST['has_logistic_no_only'];
+		// 訂單狀態篩選
+		$order_statuses       = isset( $_POST['order_statuses'] ) ? array_map( 'sanitize_text_field', wp_unslash( $_POST['order_statuses'] ) ) : array( 'processing' );
 
 		if ( empty( $service ) ) {
 			wp_send_json_error( __( '無效的服務', 'ys-paynow-shipping' ) );
@@ -795,6 +937,17 @@ class YSOrderListTable {
 			);
 		}
 
+		// 處理訂單狀態（移除 wc- 前綴如果需要）
+		$status_query = array();
+		foreach ( $order_statuses as $status ) {
+			// WooCommerce 訂單狀態查詢不需要 wc- 前綴
+			$status_query[] = str_replace( 'wc-', '', $status );
+		}
+		// 如果沒有選擇任何狀態，預設處理中
+		if ( empty( $status_query ) ) {
+			$status_query = array( 'processing' );
+		}
+
 		// 如果有選擇特定的訂單
 		if ( ! empty( $selected_ids ) ) {
 			foreach ( $selected_ids as $order_id ) {
@@ -803,10 +956,23 @@ class YSOrderListTable {
 					continue;
 				}
 
+				// 檢查訂單狀態是否在篩選範圍內
+				if ( ! in_array( $order->get_status(), $status_query, true ) ) {
+					continue;
+				}
+
 				// 檢查物流服務是否匹配
 				$logistic_service_id = $order->get_meta( YSOrderMeta::LogisticServiceId );
 				if ( $logistic_service_id !== $service ) {
 					continue;
+				}
+
+				// 檢查是否有物流單號
+				if ( $has_logistic_no_only ) {
+					$logistic_number = $order->get_meta( YSOrderMeta::LogisticNumber );
+					if ( empty( $logistic_number ) ) {
+						continue;
+					}
 				}
 
 				// 檢查列印狀態
@@ -831,7 +997,7 @@ class YSOrderListTable {
 			// 否則撈取符合條件的訂單
 			$args = array(
 				'limit'    => 100,
-				'status'   => array( 'processing', 'on-hold', 'pending' ),
+				'status'   => $status_query,
 				'orderby'  => 'date',
 				'order'    => 'DESC',
 			);
@@ -848,6 +1014,14 @@ class YSOrderListTable {
 				$logistic_service_id = $order->get_meta( YSOrderMeta::LogisticServiceId );
 				if ( $logistic_service_id !== $service ) {
 					continue;
+				}
+
+				// 檢查是否有物流單號
+				if ( $has_logistic_no_only ) {
+					$logistic_number = $order->get_meta( YSOrderMeta::LogisticNumber );
+					if ( empty( $logistic_number ) ) {
+						continue;
+					}
 				}
 
 				// 檢查列印狀態

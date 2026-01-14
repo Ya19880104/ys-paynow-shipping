@@ -193,26 +193,10 @@
     font-size: 14px;
 }
 
-/* 更換門市按鈕 */
-.ys-paynow-change-store-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    background: #fff;
-    border: 1px solid var(--ys-border);
-    border-radius: 6px;
-    color: var(--ys-text-muted);
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.ys-paynow-change-store-btn:hover {
-    background: var(--ys-primary-light);
-    border-color: var(--ys-primary);
-    color: var(--ys-primary);
-}
+/*
+ * 注意: .ys-paynow-change-store-btn 已移除（未使用）
+ * 更換門市功能使用 .ys-paynow-store-map-btn 按鈕
+ */
 
 /* ============================================
    物流狀態區塊 (新版卡片式設計)

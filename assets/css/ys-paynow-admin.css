@@ -188,10 +188,10 @@
     color: #7b1fa2;
 }
 
-/* 已完成 - 灰藍 */
+/* 已完成 - 深綠（成功完成） */
 .ys-status-completed {
-    background: #e8eff5;
-    color: #6b8a9a;
+    background: #e8f5e9;
+    color: #2e7d32;
 }
 
 /* 已取消/退貨 - 紅色 */

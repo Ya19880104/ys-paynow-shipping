@@ -196,6 +196,14 @@ class YSShippingRequest {
 			$args['receiver_storename'] = $order->get_meta( YSOrderMeta::StoreName );
 			$args['Receiver_address']   = $order->get_meta( YSOrderMeta::StoreAddr );
 			$args['return_storeid']     = '';
+
+			// ★ 全家冷凍 C2C 需要保留編號
+			if ( YSLogisticService::FAMIFROZEN_C2C === $logistic_service_id ) {
+				$reserved_no = $order->get_meta( YSOrderMeta::ReservedNo );
+				if ( ! empty( $reserved_no ) ) {
+					$args['ReservedNo'] = $reserved_no;
+				}
+			}
 		} else {
 			// 宅配
 			$args['Receiver_address'] = self::get_order_address( $order );
@@ -388,27 +396,37 @@ class YSShippingRequest {
 			$order->save();
 
 			// 計算狀態 Class (新版邏輯)
+			// 預設為訂單成立（步驟 1）
 			$current_step = 1;
 			$status_key   = 'pending';
-			$status_class = 'status-pending'; // 注意這裡改成與前端一致
+			$status_class = 'status-pending';
 			$progress_pct = '0%';
 
 			if ( ! empty( $status_desc ) ) {
 				if ( strpos( $status_desc, '取貨' ) !== false || strpos( $status_desc, '完成' ) !== false ) {
-					$current_step = 4;
+					// 已取貨/完成 - 步驟 5（超取）或 4（宅配）
+					$current_step = 5;
 					$status_key   = 'completed';
 					$status_class = 'status-completed';
 					$progress_pct = '100%';
 				} elseif ( strpos( $status_desc, '到店' ) !== false || strpos( $status_desc, '待取' ) !== false ) {
-					$current_step = 3;
+					// 已到店/待取 - 步驟 4
+					$current_step = 4;
 					$status_key   = 'arrived';
 					$status_class = 'status-arrived';
-					$progress_pct = '66%';
-				} elseif ( strpos( $status_desc, '運送' ) !== false || strpos( $status_desc, '出貨' ) !== false || strpos( $status_desc, '離店' ) !== false || strpos( $status_desc, '集貨' ) !== false ) {
-					$current_step = 2;
+					$progress_pct = '75%';
+				} elseif ( strpos( $status_desc, '運送' ) !== false || strpos( $status_desc, '離店' ) !== false || strpos( $status_desc, '集貨' ) !== false ) {
+					// 運送中/離店/集貨 - 步驟 3
+					$current_step = 3;
 					$status_key   = 'shipping';
 					$status_class = 'status-shipping';
-					$progress_pct = '33%';
+					$progress_pct = '50%';
+				} elseif ( strpos( $status_desc, '等待' ) !== false || strpos( $status_desc, '寄件' ) !== false || strpos( $status_desc, '出貨' ) !== false || strpos( $status_desc, '準備' ) !== false ) {
+					// 等待寄件/準備出貨 - 步驟 2（商品準備中）
+					$current_step = 2;
+					$status_key   = 'waiting';
+					$status_class = 'status-waiting';
+					$progress_pct = '25%';
 				}
 			}
 
@@ -666,13 +684,13 @@ class YSShippingRequest {
 		foreach ( $order_ids as $order_id ) {
 			$order = wc_get_order( $order_id );
 			if ( $order ) {
-				// 取得物流單號（用於黑貓等需要 LogisticNumber 的服務）
+				// 取得物流單號（用於 B2C/冷凍/黑貓等需要 LogisticNumber 的服務）
 				$logistic_number = $order->get_meta( YSOrderMeta::LogisticNumber );
 				if ( ! empty( $logistic_number ) ) {
-					$logistic_numbers[] = $logistic_number;
+					$logistic_numbers[] = $logistic_number . '_1'; // 格式：物流單號_1
 				}
 
-				// 取得訂單編號（用於超商列印）
+				// 取得訂單編號（用於 C2C 超商列印）
 				$renew_order_no = $order->get_meta( YSOrderMeta::RenewOrderNo );
 				$order_numbers[] = $renew_order_no ?: self::get_prefixed_order_no( $order );
 
@@ -696,91 +714,195 @@ class YSShippingRequest {
 		$order_numbers_string    = implode( ',', $order_numbers );
 		$logistic_numbers_string = implode( ',', $logistic_numbers );
 
+		// 判斷是否需要使用 POST 方法（B2C 大宗、冷凍、黑貓）
+		$post_services = array(
+			YSLogisticService::TCAT,
+			YSLogisticService::TCAT_OWN,
+			YSLogisticService::SEVENBULK,
+			YSLogisticService::FAMIBULK,
+			YSLogisticService::SEVENFROZEN,
+			YSLogisticService::SEVENFROZEN_C2C,
+			YSLogisticService::FAMIFROZEN,
+			YSLogisticService::FAMIFROZEN_C2C,
+		);
+
+		$use_post = in_array( $service, $post_services, true );
+
+		// ★ 檢查 POST 方法的服務是否有物流單號
+		if ( $use_post && empty( $logistic_numbers ) ) {
+			wp_die( esc_html__( '無法列印：所選訂單沒有物流單號。請先確認訂單已取號成功。', 'ys-paynow-shipping' ) );
+		}
+
 		// 根據物流服務取得列印 API URL
-		$api_url = self::get_print_label_url( $service, $order_numbers_string, $logistic_numbers_string, $order_ids );
+		$api_url = self::get_print_label_url( $service );
 
 		if ( ! $api_url ) {
 			wp_die( esc_html__( '不支援的物流服務', 'ys-paynow-shipping' ) );
 		}
 
-		// 對於 TCAT (黑貓)，直接重導向
-		if ( YSLogisticService::TCAT === $service || YSLogisticService::TCAT_OWN === $service ) {
-			// 黑貓可能需要 POST，確認文件。若這裡回傳的是 URL，則直接導向。
-			// 根據 get_print_label_url 實作，它是回傳 PrintBlackCatLabel URL。
-			// 假設黑貓是直接訪問頁面。
-			wp_redirect( $api_url );
-			exit;
-		}
-
-		// 對於超商 (7-11/全家/萊爾富)，API 回傳的是 "5,URL" 格式
-		// 我們需要先呼叫 API 取得真正的 PDF/網頁 URL
-		$response = wp_remote_get( $api_url, array(
-			'timeout' => 30,
-			'headers' => array(
-				'User-Agent' => 'YS-PayNow-Shipping/' . YS_PAYNOW_SHIPPING_VERSION,
-			),
+		YSPaynowShipping::log( sprintf(
+			'Print label request: service=%s, use_post=%s, order_numbers=%s, logistic_numbers=%s, api_url=%s',
+			$service,
+			$use_post ? 'yes' : 'no',
+			$order_numbers_string,
+			$logistic_numbers_string,
+			$api_url
 		) );
 
-		if ( is_wp_error( $response ) ) {
-			wp_die( esc_html( $response->get_error_message() ) );
-		}
-
-		$body = wp_remote_retrieve_body( $response );
-		
-		// 移除可能存在的引號 (API 回傳有時會包含引號)
-		$body = trim( $body, '"' );
-
-		// 解析回應
-		// 格式 1: "5,https://..." (常見)
-		// 格式 2: "S,https://..." (使用者回報)
-		if ( strpos( $body, '5,' ) === 0 ) {
-			$real_url = substr( $body, 2 );
-		} elseif ( strpos( $body, 'S,' ) === 0 ) {
-			$real_url = substr( $body, 2 );
-		} else {
-             // 嘗試直接判定是否為 URL
-             if ( filter_var( $body, FILTER_VALIDATE_URL ) ) {
-                 $real_url = $body;
-             } else {
-				 $real_url = '';
-			 }
-        }
-
-		if ( ! empty( $real_url ) && filter_var( $real_url, FILTER_VALIDATE_URL ) ) {
-			wp_redirect( $real_url );
+		if ( $use_post ) {
+			// B2C 大宗、冷凍、黑貓：使用 POST 方法
+			// ★ 使用自動提交表單重定向到 PayNow，讓瀏覽器直接載入頁面
+			// 這樣可以正確載入 PayNow 頁面所需的外部資源（CSS、JS）
+			?>
+			<!DOCTYPE html>
+			<html>
+			<head>
+				<meta charset="UTF-8">
+				<title><?php esc_html_e( '正在跳轉到列印頁面...', 'ys-paynow-shipping' ); ?></title>
+				<style>
+					body {
+						font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+						display: flex;
+						justify-content: center;
+						align-items: center;
+						height: 100vh;
+						margin: 0;
+						background: #f5f5f5;
+					}
+					.loading {
+						text-align: center;
+						color: #666;
+					}
+					.spinner {
+						border: 3px solid #f3f3f3;
+						border-top: 3px solid #3498db;
+						border-radius: 50%;
+						width: 40px;
+						height: 40px;
+						animation: spin 1s linear infinite;
+						margin: 0 auto 15px;
+					}
+					@keyframes spin {
+						0% { transform: rotate(0deg); }
+						100% { transform: rotate(360deg); }
+					}
+				</style>
+			</head>
+			<body>
+				<div class="loading">
+					<div class="spinner"></div>
+					<p><?php esc_html_e( '正在跳轉到 PayNow 列印頁面...', 'ys-paynow-shipping' ); ?></p>
+				</div>
+				<form id="paynow-print-form" method="POST" action="<?php echo esc_url( $api_url ); ?>">
+					<input type="hidden" name="LogisticNumbers" value="<?php echo esc_attr( $logistic_numbers_string ); ?>">
+				</form>
+				<script>
+					document.getElementById('paynow-print-form').submit();
+				</script>
+			</body>
+			</html>
+			<?php
 			exit;
-		}
 
-		// 若無法解析或格式錯誤
-		wp_die( esc_html__( '無法取得標籤網址，API 回應：', 'ys-paynow-shipping' ) . esc_html( $body ) );
+		} else {
+			// C2C 超商 (7-11/全家/萊爾富)：使用 GET 方法
+			$api_url .= '?orderNumberStr=' . rawurlencode( $order_numbers_string ) . '&user_account=' . rawurlencode( YSPaynowShipping::$user_account );
+
+			$response = wp_remote_get( $api_url, array(
+				'timeout' => 30,
+				'headers' => array(
+					'User-Agent' => 'YS-PayNow-Shipping/' . YS_PAYNOW_SHIPPING_VERSION,
+				),
+			) );
+
+			if ( is_wp_error( $response ) ) {
+				wp_die( esc_html( $response->get_error_message() ) );
+			}
+
+			$body = wp_remote_retrieve_body( $response );
+
+			// 移除可能存在的引號 (API 回傳有時會包含引號)
+			$body = trim( $body, '"' );
+
+			// 解析回應
+			// 格式 1: "5,https://..." (常見)
+			// 格式 2: "S,https://..." (使用者回報)
+			$real_url = '';
+			if ( strpos( $body, '5,' ) === 0 ) {
+				$real_url = substr( $body, 2 );
+			} elseif ( strpos( $body, 'S,' ) === 0 ) {
+				$real_url = substr( $body, 2 );
+			} elseif ( filter_var( $body, FILTER_VALIDATE_URL ) ) {
+				// 嘗試直接判定是否為 URL
+				$real_url = $body;
+			}
+
+			if ( ! empty( $real_url ) && filter_var( $real_url, FILTER_VALIDATE_URL ) ) {
+				wp_redirect( $real_url );
+				exit;
+			}
+
+			// 若無法解析或格式錯誤
+			wp_die( esc_html__( '無法取得標籤網址，API 回應：', 'ys-paynow-shipping' ) . esc_html( $body ) );
+		}
 	}
 
 	/**
 	 * 取得列印標籤 API URL (內部使用)
 	 *
-	 * @param string $service                 物流服務代碼。
-	 * @param string $order_numbers_string    訂單編號字串（超商用）。
-	 * @param string $logistic_numbers_string 物流單號字串（黑貓用）。
-	 * @param array  $order_ids               訂單 ID 陣列。
+	 * 根據 PayNow API 文件：
+	 * - C2C 超商 (7-11/全家/萊爾富)：使用 GET 方法，參數為 orderNumberStr
+	 * - B2C 大宗、冷凍、黑貓：使用 POST 方法，參數為 LogisticNumbers（格式：物流單號_1）
+	 *
+	 * @param string $service 物流服務代碼。
 	 * @return string|false 列印 URL 或 false。
 	 */
-	private static function get_print_label_url( $service, $order_numbers_string, $logistic_numbers_string, $order_ids ) {
+	private static function get_print_label_url( $service ) {
 		$base_url = YSPaynowShipping::$api_url;
 
 		switch ( $service ) {
+			// ========== C2C 超商（GET 方法）==========
+			// 7-11 C2C (交貨便)
 			case YSLogisticService::SEVEN:
-				return $base_url . '/api/Order711?orderNumberStr=' . $order_numbers_string . '&user_account=' . YSPaynowShipping::$user_account;
+				return $base_url . '/api/Order711';
 
+			// 全家 C2C (店到店)
 			case YSLogisticService::FAMI:
-				return $base_url . '/api/OrderFamiC2C?orderNumberStr=' . $order_numbers_string . '&user_account=' . YSPaynowShipping::$user_account;
+				return $base_url . '/api/OrderFamiC2C';
 
+			// 萊爾富 C2C
 			case YSLogisticService::HILIFE:
-				return $base_url . '/api/OrderHiLife?orderNumberStr=' . $order_numbers_string . '&user_account=' . YSPaynowShipping::$user_account;
+				return $base_url . '/api/OrderHiLife';
 
+			// ========== B2C 大宗、冷凍、黑貓（POST 方法）==========
+			// 7-11 B2C (大宗寄倉)
+			case YSLogisticService::SEVENBULK:
+				return $base_url . '/Member/Order/Print711bulkLabel';
+
+			// 7-11 冷凍 C2C
+			case YSLogisticService::SEVENFROZEN_C2C:
+				return $base_url . '/Member/Order/Print711FreezingC2CLabel';
+
+			// 7-11 冷凍 B2C
+			case YSLogisticService::SEVENFROZEN:
+				return $base_url . '/Member/Order/Print711FreezingB2CLabel';
+
+			// 全家 B2C (大宗寄倉)
+			case YSLogisticService::FAMIBULK:
+				return $base_url . '/Member/Order/PrintFamiB2CLabel';
+
+			// 全家 冷凍 C2C
+			case YSLogisticService::FAMIFROZEN_C2C:
+				return $base_url . '/Member/Order/PrintFamiFreezingC2CLabel';
+
+			// 全家 冷凍 B2C
+			case YSLogisticService::FAMIFROZEN:
+				return $base_url . '/Member/Order/PrintFamiFreezingB2CLabel';
+
+			// 黑貓宅配
 			case YSLogisticService::TCAT:
 			case YSLogisticService::TCAT_OWN:
-				// 黑貓使用 LogisticNumber 列印
-				return $base_url . '/Member/Order/PrintBlackCatLabel?LogisticNumbers=' . $logistic_numbers_string;
+				return $base_url . '/Member/Order/PrintBlackCatLabel';
 
 			default:
 				return false;

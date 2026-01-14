@@ -128,6 +128,11 @@ function run_ys_paynow_shipping() {
 
 	// 初始化主類別
 	YSPaynowShipping::init();
+
+	// 載入開發工具 (僅在後台)
+	if ( is_admin() && file_exists( YS_PAYNOW_SHIPPING_PLUGIN_DIR . 'dev-tools/test-order-setup.php' ) ) {
+		require_once YS_PAYNOW_SHIPPING_PLUGIN_DIR . 'dev-tools/test-order-setup.php';
+	}
 }
 add_action( 'plugins_loaded', __NAMESPACE__ . '\\run_ys_paynow_shipping' );
 
