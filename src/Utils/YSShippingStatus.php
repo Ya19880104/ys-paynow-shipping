@@ -45,7 +45,7 @@ class YSShippingStatus {
 
 	/*
 	|--------------------------------------------------------------------------
-	| 物流狀態代碼
+	| 物流狀態代碼（通用）
 	|--------------------------------------------------------------------------
 	*/
 
@@ -104,6 +104,54 @@ class YSShippingStatus {
 	 * @var string
 	 */
 	const CANCELLED = '900';
+
+	/*
+	|--------------------------------------------------------------------------
+	| PayNow 物流代碼（黑貓宅配）
+	|--------------------------------------------------------------------------
+	*/
+
+	/**
+	 * 已集貨轉運中
+	 *
+	 * @var string
+	 */
+	const TCAT_IN_TRANSIT = '4500';
+
+	/**
+	 * 物流中心理貨中
+	 *
+	 * @var string
+	 */
+	const TCAT_AT_CENTER = '4060';
+
+	/**
+	 * 暫置營業所
+	 *
+	 * @var string
+	 */
+	const TCAT_AT_STATION = '5505';
+
+	/**
+	 * 配送中
+	 *
+	 * @var string
+	 */
+	const TCAT_DELIVERING = '5500';
+
+	/**
+	 * 商品配送完成（黑貓）
+	 *
+	 * @var string
+	 */
+	const TCAT_DELIVERED = '8500';
+
+	/**
+	 * 黑貓收退
+	 *
+	 * @var string
+	 */
+	const TCAT_RETURNED = '8520';
 
 	/*
 	|--------------------------------------------------------------------------
@@ -166,7 +214,7 @@ class YSShippingStatus {
 		$status_returned = ( 'yes' === $auto_status ) ? YSOrderStatus::SHIPPING_RETURNED : get_option( 'ys_paynow_shipping_status_returned', 'wc-failed' );
 
 		// 已完成 (取貨/配達) - 一律對應 wc-completed
-		if ( in_array( $status_code, array( '8000', '8500', self::PICKED_UP ), true ) ) {
+		if ( in_array( $status_code, array( '8000', '8500', self::PICKED_UP, self::TCAT_DELIVERED ), true ) ) {
 			return 'wc-completed';
 		}
 
@@ -175,8 +223,12 @@ class YSShippingStatus {
 			return $status_arrived;
 		}
 
-		// 運送中
-		if ( in_array( $status_code, array( '0101', '0102', '300', '5202', '5500', self::SENDER_DELIVERED, self::IN_TRANSIT ), true ) ) {
+		// 運送中（含黑貓集貨、轉運、配送、暫置營業所）
+		if ( in_array( $status_code, array(
+			'0101', '0102', '300', '5202',
+			self::SENDER_DELIVERED, self::IN_TRANSIT,
+			self::TCAT_IN_TRANSIT, self::TCAT_AT_CENTER, self::TCAT_AT_STATION, self::TCAT_DELIVERING,
+		), true ) ) {
 			return $status_transit;
 		}
 
@@ -186,7 +238,7 @@ class YSShippingStatus {
 		}
 
 		// 退回 / 異常
-		if ( in_array( $status_code, array( '0103', '4031', '4032', '5001', '600', '700', self::RETURNING, self::RETURNED, self::CANCELLED ), true ) ) {
+		if ( in_array( $status_code, array( '0103', '4031', '4032', '5001', '600', '700', self::RETURNING, self::RETURNED, self::CANCELLED, self::TCAT_RETURNED ), true ) ) {
 			return $status_returned;
 		}
 

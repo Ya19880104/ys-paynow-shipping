@@ -38,6 +38,8 @@ class YSSettingsTab extends \WC_Settings_Page {
 
 		// 註冊自定義欄位類型
 		add_action( 'woocommerce_admin_field_ys_callback_url_guide', array( $this, 'output_callback_url_guide' ) );
+		add_action( 'woocommerce_admin_field_ys_cron_next_run', array( $this, 'output_cron_next_run' ) );
+		add_action( 'woocommerce_admin_field_ys_cron_log_viewer', array( $this, 'output_cron_log_viewer' ) );
 
 		parent::__construct();
 	}
@@ -365,7 +367,63 @@ class YSSettingsTab extends \WC_Settings_Page {
 				// 更新內容顯示
 				$('.ys-tab-content').addClass('ys-tab-hidden');
 				$('#ys-tab-' + tab).removeClass('ys-tab-hidden');
+
+				// 切換到排程分頁時自動載入 CRON LOG
+				if (tab === 'cron') {
+					ysLoadCronLog();
+				}
 			});
+
+			// CRON LOG 啟用 checkbox 切換時顯示/隱藏 LOG 檢視器
+			$('#ys_paynow_shipping_cron_log_enabled').on('change', function() {
+				if ($(this).is(':checked')) {
+					$('#ys-cron-log-viewer-row').show();
+				} else {
+					$('#ys-cron-log-viewer-row').hide();
+				}
+			});
+
+			// CRON LOG 重新載入按鈕
+			$('#ys-cron-log-reload').on('click', function() {
+				ysLoadCronLog();
+			});
+
+			// CRON LOG 清除按鈕
+			$('#ys-cron-log-clear').on('click', function() {
+				if (!confirm('<?php echo esc_js( __( '確定要清除所有 CRON LOG 紀錄嗎？', 'ys-paynow-shipping' ) ); ?>')) {
+					return;
+				}
+				$.post(ajaxurl, {
+					action: 'ys_paynow_clear_cron_log',
+					nonce: '<?php echo wp_create_nonce( 'ys-paynow-shipping-admin' ); ?>'
+				}, function(response) {
+					if (response.success) {
+						$('#ys-cron-log-content').text(response.data.message);
+					} else {
+						$('#ys-cron-log-content').text('<?php echo esc_js( __( '清除失敗', 'ys-paynow-shipping' ) ); ?>');
+					}
+				});
+			});
+
+			// AJAX 載入 CRON LOG
+			function ysLoadCronLog() {
+				var $content = $('#ys-cron-log-content');
+				$content.text('<?php echo esc_js( __( '載入中...', 'ys-paynow-shipping' ) ); ?>');
+				$.post(ajaxurl, {
+					action: 'ys_paynow_get_cron_log',
+					nonce: '<?php echo wp_create_nonce( 'ys-paynow-shipping-admin' ); ?>'
+				}, function(response) {
+					if (response.success) {
+						$content.text(response.data.content);
+						// 自動捲動到底部
+						$content.scrollTop($content[0].scrollHeight);
+					} else {
+						$content.text('<?php echo esc_js( __( '載入失敗', 'ys-paynow-shipping' ) ); ?>');
+					}
+				}).fail(function() {
+					$content.text('<?php echo esc_js( __( '請求失敗，請重試', 'ys-paynow-shipping' ) ); ?>');
+				});
+			}
 		});
 		</script>
 		<?php
@@ -383,11 +441,38 @@ class YSSettingsTab extends \WC_Settings_Page {
 	 * 覆寫父類方法，儲存所有區段的設定（因為我們一次輸出所有區段）
 	 */
 	public function save() {
+		// 記錄舊的 CRON 間隔值（用於偵測變更）
+		$old_interval = absint( get_option( 'ys_paynow_shipping_cron_interval', 6 ) );
+
 		$sections = $this->get_sections();
 
 		foreach ( $sections as $section_id => $section_label ) {
 			$settings = $this->get_settings( $section_id );
 			\WC_Admin_Settings::save_fields( $settings );
+		}
+
+		// 偵測 CRON 間隔是否變更
+		$new_interval = absint( get_option( 'ys_paynow_shipping_cron_interval', 6 ) );
+		if ( $new_interval < 1 ) {
+			$new_interval = 6;
+			update_option( 'ys_paynow_shipping_cron_interval', 6 );
+		}
+
+		if ( $old_interval !== $new_interval ) {
+			// 移除舊排程
+			$timestamp = wp_next_scheduled( 'ys_paynow_status_update' );
+			if ( $timestamp ) {
+				wp_unschedule_event( $timestamp, 'ys_paynow_status_update' );
+			}
+			// 立即重新排程
+			wp_schedule_event( time(), 'ys_paynow_custom_interval', 'ys_paynow_status_update' );
+			\WC_Admin_Settings::add_message(
+				sprintf(
+					/* translators: %d: hours */
+					__( '排程間隔已更新為每 %d 小時，下次執行時間已重新設定。', 'ys-paynow-shipping' ),
+					$new_interval
+				)
+			);
 		}
 	}
 
@@ -402,6 +487,7 @@ class YSSettingsTab extends \WC_Settings_Page {
 			'sender' => __( '寄件人資訊', 'ys-paynow-shipping' ),
 			'cvs'    => __( '超商取貨設定', 'ys-paynow-shipping' ),
 			'tcat'   => __( '黑貓宅配設定', 'ys-paynow-shipping' ),
+			'cron'   => __( '排程設定', 'ys-paynow-shipping' ),
 		);
 
 		return apply_filters( 'woocommerce_get_sections_' . $this->id, $sections );
@@ -420,6 +506,8 @@ class YSSettingsTab extends \WC_Settings_Page {
 			$settings = $this->get_cvs_settings();
 		} elseif ( 'tcat' === $current_section ) {
 			$settings = $this->get_tcat_settings();
+		} elseif ( 'cron' === $current_section ) {
+			$settings = $this->get_cron_settings();
 		} else {
 			$settings = $this->get_general_settings();
 		}
@@ -482,6 +570,14 @@ class YSSettingsTab extends \WC_Settings_Page {
 				'id'      => 'ys_paynow_shipping_debug',
 				'type'    => 'checkbox',
 				'default' => 'no',
+			),
+			array(
+				'title'    => __( '顯示訂單物流欄位', 'ys-paynow-shipping' ),
+				'desc'     => __( '在後台訂單列表和前台「我的帳號」顯示物流狀態欄位', 'ys-paynow-shipping' ),
+				'desc_tip' => __( '啟用後，將在 WooCommerce 訂單列表和客戶的「我的帳號 > 訂單」頁面顯示 PayNow 物流狀態欄位。若已啟用 YangSheep 結帳強化外掛的訂單增強功能，建議關閉此選項避免重複。', 'ys-paynow-shipping' ),
+				'id'       => 'ys_paynow_shipping_show_order_column',
+				'type'     => 'checkbox',
+				'default'  => 'yes',
 			),
 			array(
 				'title'    => __( '姓名順序', 'ys-paynow-shipping' ),
@@ -593,8 +689,17 @@ class YSSettingsTab extends \WC_Settings_Page {
 				'desc_tip' => true,
 			),
 			array(
+				'title'    => __( '寄件人郵遞區號', 'ys-paynow-shipping' ),
+				'desc'     => __( '3 碼郵遞區號（用於黑貓宅配驗證）', 'ys-paynow-shipping' ),
+				'id'       => 'ys_paynow_shipping_sender_postcode',
+				'type'     => 'text',
+				'default'  => '',
+				'css'      => 'width: 80px;',
+				'desc_tip' => true,
+			),
+			array(
 				'title'    => __( '寄件人地址', 'ys-paynow-shipping' ),
-				'desc'     => __( '寄件地址（用於宅配）', 'ys-paynow-shipping' ),
+				'desc'     => __( '完整寄件地址，例如：臺北市內湖區康寧路三段99巷17弄40號', 'ys-paynow-shipping' ),
 				'id'       => 'ys_paynow_shipping_sender_address',
 				'type'     => 'text',
 				'default'  => '',
@@ -608,118 +713,153 @@ class YSSettingsTab extends \WC_Settings_Page {
 	}
 
 	/**
+	 * 檢查 YangSheep Checkout Optimizer 是否啟用
+	 *
+	 * @return bool 是否啟用。
+	 */
+	private function is_checkout_optimizer_active() {
+		// 檢查類別是否存在（表示外掛已啟用並載入）
+		return class_exists( 'YANGSHEEP_Checkout_Fields' );
+	}
+
+	/**
 	 * 超商取貨設定
 	 *
 	 * @return array 設定欄位陣列。
 	 */
 	private function get_cvs_settings() {
-		return array(
-			// ========== 超商取貨結帳行為設定 ==========
-			array(
+		$is_optimizer_active = $this->is_checkout_optimizer_active();
+
+		$settings = array();
+
+		// ========== 超商取貨結帳行為設定 ==========
+		if ( $is_optimizer_active ) {
+			// Checkout Optimizer 啟用時，顯示提示訊息
+			$settings[] = array(
+				'title' => __( '超商取貨結帳行為', 'ys-paynow-shipping' ),
+				'type'  => 'title',
+				'desc'  => '<div class="notice notice-info inline" style="margin: 10px 0; padding: 10px 12px;"><p>' .
+					__( '已偵測到 <strong>YangSheep 結帳強化外掛</strong>，超商取貨時的欄位隱藏功能已由該外掛統一處理。', 'ys-paynow-shipping' ) .
+					'<br>' .
+					__( '下方「隱藏帳單地址」與「隱藏運送地址」設定已自動停用，請至結帳強化外掛設定頁面管理。', 'ys-paynow-shipping' ) .
+					'</p></div>',
+				'id'    => 'ys_paynow_shipping_cvs_checkout_options',
+			);
+			$settings[] = array(
+				'type' => 'sectionend',
+				'id'   => 'ys_paynow_shipping_cvs_checkout_options',
+			);
+		} else {
+			// Checkout Optimizer 未啟用，顯示正常設定
+			$settings[] = array(
 				'title' => __( '超商取貨結帳行為', 'ys-paynow-shipping' ),
 				'type'  => 'title',
 				'desc'  => __( '設定超商取貨時結帳頁面的欄位顯示行為。', 'ys-paynow-shipping' ),
 				'id'    => 'ys_paynow_shipping_cvs_checkout_options',
-			),
-			array(
+			);
+			$settings[] = array(
 				'title'    => __( '隱藏帳單地址', 'ys-paynow-shipping' ),
 				'desc'     => __( '超商取貨時自動隱藏帳單地址欄位（地址、城市、郵遞區號等）', 'ys-paynow-shipping' ),
 				'desc_tip' => __( '啟用後，當用戶選擇超商取貨時，帳單區域的地址相關欄位會自動隱藏，僅保留姓名、電話、Email。', 'ys-paynow-shipping' ),
 				'id'       => 'ys_paynow_cvs_hide_billing_address',
 				'type'     => 'checkbox',
 				'default'  => 'no',
-			),
-			array(
+			);
+			$settings[] = array(
 				'title'    => __( '隱藏運送地址', 'ys-paynow-shipping' ),
 				'desc'     => __( '超商取貨時自動隱藏運送地址欄位（若有啟用運送區域）', 'ys-paynow-shipping' ),
 				'desc_tip' => __( '啟用後，當用戶選擇超商取貨時，運送區域的地址相關欄位會自動隱藏，僅保留收件人姓名、電話。', 'ys-paynow-shipping' ),
 				'id'       => 'ys_paynow_cvs_hide_shipping_address',
 				'type'     => 'checkbox',
 				'default'  => 'yes',
-			),
-			array(
+			);
+			$settings[] = array(
 				'type' => 'sectionend',
 				'id'   => 'ys_paynow_shipping_cvs_checkout_options',
-			),
-			// ========== 超商服務啟用設定 ==========
-			array(
-				'title' => __( '超商取貨服務', 'ys-paynow-shipping' ),
-				'type'  => 'title',
-				'desc'  => __( '啟用或停用各類超商取貨服務。', 'ys-paynow-shipping' ),
-				'id'    => 'ys_paynow_shipping_cvs_options',
-			),
-			array(
-				'title'   => __( '7-11 C2C 冷凍', 'ys-paynow-shipping' ),
-				'desc'    => __( '啟用 7-11 交貨便 (冷凍)', 'ys-paynow-shipping' ),
-				'id'      => 'ys_paynow_shipping_enable_711_frozen_c2c',
-				'type'    => 'checkbox',
-				'default' => 'no',
-			),
-			array(
-				'title'   => __( '7-11 B2C 大宗', 'ys-paynow-shipping' ),
-				'desc'    => __( '啟用 7-11 大宗寄倉 (常溫)', 'ys-paynow-shipping' ),
-				'id'      => 'ys_paynow_shipping_enable_711_bulk',
-				'type'    => 'checkbox',
-				'default' => 'no',
-			),
-			array(
-				'title'   => __( '7-11 B2C 大宗冷凍', 'ys-paynow-shipping' ),
-				'desc'    => __( '啟用 7-11 大宗寄倉 (冷凍)', 'ys-paynow-shipping' ),
-				'id'      => 'ys_paynow_shipping_enable_711_bulk_frozen',
-				'type'    => 'checkbox',
-				'default' => 'no',
-			),
-			array(
-				'title'   => __( '全家 C2C 冷凍', 'ys-paynow-shipping' ),
-				'desc'    => __( '啟用 全家店到店 (冷凍)', 'ys-paynow-shipping' ),
-				'id'      => 'ys_paynow_shipping_enable_family_frozen_c2c',
-				'type'    => 'checkbox',
-				'default' => 'no',
-			),
-			array(
-				'title'   => __( '全家 B2C 大宗', 'ys-paynow-shipping' ),
-				'desc'    => __( '啟用 全家大宗寄倉 (常溫)', 'ys-paynow-shipping' ),
-				'id'      => 'ys_paynow_shipping_enable_family_bulk',
-				'type'    => 'checkbox',
-				'default' => 'no',
-			),
-			array(
-				'title'   => __( '全家 B2C 大宗冷凍', 'ys-paynow-shipping' ),
-				'desc'    => __( '啟用 全家大宗寄倉 (冷凍)', 'ys-paynow-shipping' ),
-				'id'      => 'ys_paynow_shipping_enable_family_bulk_frozen',
-				'type'    => 'checkbox',
-				'default' => 'no',
-			),
-			array(
-				'type' => 'sectionend',
-				'id'   => 'ys_paynow_shipping_cvs_options',
-			),
-			// 超商視覺設定區塊
-			array(
-				'title' => __( '超商取貨區域', 'ys-paynow-shipping' ),
-				'type'  => 'title',
-				'desc'  => __( '自訂結帳頁超商門市選擇器的顏色配置。', 'ys-paynow-shipping' ),
-				'id'    => 'ys_paynow_cvs_style_options',
-			),
-			array(
-				'title'   => __( '門市資訊背景', 'ys-paynow-shipping' ),
-				'id'      => 'ys_paynow_cvs_store_bg',
-				'type'    => 'color',
-				'default' => self::$default_colors['ys_paynow_cvs_store_bg'],
-				'css'     => 'width: 6em;',
-			),
-			array(
-				'title'   => __( '門市資訊邊框', 'ys-paynow-shipping' ),
-				'id'      => 'ys_paynow_cvs_store_border',
-				'type'    => 'color',
-				'default' => self::$default_colors['ys_paynow_cvs_store_border'],
-				'css'     => 'width: 6em;',
-			),
-			array(
-				'type' => 'sectionend',
-				'id'   => 'ys_paynow_cvs_style_options',
-			),
+			);
+		}
+
+		// ========== 超商服務啟用設定 ==========
+		$settings[] = array(
+			'title' => __( '超商取貨服務', 'ys-paynow-shipping' ),
+			'type'  => 'title',
+			'desc'  => __( '啟用或停用各類超商取貨服務。', 'ys-paynow-shipping' ),
+			'id'    => 'ys_paynow_shipping_cvs_options',
 		);
+		$settings[] = array(
+			'title'   => __( '7-11 C2C 冷凍', 'ys-paynow-shipping' ),
+			'desc'    => __( '啟用 7-11 交貨便 (冷凍)', 'ys-paynow-shipping' ),
+			'id'      => 'ys_paynow_shipping_enable_711_frozen_c2c',
+			'type'    => 'checkbox',
+			'default' => 'no',
+		);
+		$settings[] = array(
+			'title'   => __( '7-11 B2C 大宗', 'ys-paynow-shipping' ),
+			'desc'    => __( '啟用 7-11 大宗寄倉 (常溫)', 'ys-paynow-shipping' ),
+			'id'      => 'ys_paynow_shipping_enable_711_bulk',
+			'type'    => 'checkbox',
+			'default' => 'no',
+		);
+		$settings[] = array(
+			'title'   => __( '7-11 B2C 大宗冷凍', 'ys-paynow-shipping' ),
+			'desc'    => __( '啟用 7-11 大宗寄倉 (冷凍)', 'ys-paynow-shipping' ),
+			'id'      => 'ys_paynow_shipping_enable_711_bulk_frozen',
+			'type'    => 'checkbox',
+			'default' => 'no',
+		);
+		$settings[] = array(
+			'title'   => __( '全家 C2C 冷凍', 'ys-paynow-shipping' ),
+			'desc'    => __( '啟用 全家店到店 (冷凍)', 'ys-paynow-shipping' ),
+			'id'      => 'ys_paynow_shipping_enable_family_frozen_c2c',
+			'type'    => 'checkbox',
+			'default' => 'no',
+		);
+		$settings[] = array(
+			'title'   => __( '全家 B2C 大宗', 'ys-paynow-shipping' ),
+			'desc'    => __( '啟用 全家大宗寄倉 (常溫)', 'ys-paynow-shipping' ),
+			'id'      => 'ys_paynow_shipping_enable_family_bulk',
+			'type'    => 'checkbox',
+			'default' => 'no',
+		);
+		$settings[] = array(
+			'title'   => __( '全家 B2C 大宗冷凍', 'ys-paynow-shipping' ),
+			'desc'    => __( '啟用 全家大宗寄倉 (冷凍)', 'ys-paynow-shipping' ),
+			'id'      => 'ys_paynow_shipping_enable_family_bulk_frozen',
+			'type'    => 'checkbox',
+			'default' => 'no',
+		);
+		$settings[] = array(
+			'type' => 'sectionend',
+			'id'   => 'ys_paynow_shipping_cvs_options',
+		);
+
+		// ========== 超商視覺設定區塊 ==========
+		$settings[] = array(
+			'title' => __( '超商取貨區域', 'ys-paynow-shipping' ),
+			'type'  => 'title',
+			'desc'  => __( '自訂結帳頁超商門市選擇器的顏色配置。', 'ys-paynow-shipping' ),
+			'id'    => 'ys_paynow_cvs_style_options',
+		);
+		$settings[] = array(
+			'title'   => __( '門市資訊背景', 'ys-paynow-shipping' ),
+			'id'      => 'ys_paynow_cvs_store_bg',
+			'type'    => 'color',
+			'default' => self::$default_colors['ys_paynow_cvs_store_bg'],
+			'css'     => 'width: 6em;',
+		);
+		$settings[] = array(
+			'title'   => __( '門市資訊邊框', 'ys-paynow-shipping' ),
+			'id'      => 'ys_paynow_cvs_store_border',
+			'type'    => 'color',
+			'default' => self::$default_colors['ys_paynow_cvs_store_border'],
+			'css'     => 'width: 6em;',
+		);
+		$settings[] = array(
+			'type' => 'sectionend',
+			'id'   => 'ys_paynow_cvs_style_options',
+		);
+
+		return $settings;
 	}
 
 	/**
@@ -804,6 +944,147 @@ class YSSettingsTab extends \WC_Settings_Page {
 				'id'   => 'ys_paynow_shipping_tcat_options',
 			),
 		);
+	}
+
+	/**
+	 * 排程設定
+	 *
+	 * @return array 設定欄位陣列。
+	 */
+	private function get_cron_settings() {
+		return array(
+			array(
+				'title' => __( '排程設定', 'ys-paynow-shipping' ),
+				'type'  => 'title',
+				'desc'  => __( '設定物流狀態自動更新排程。', 'ys-paynow-shipping' ),
+				'id'    => 'ys_paynow_shipping_cron_options',
+			),
+			array(
+				'title'             => __( '排程間隔（小時）', 'ys-paynow-shipping' ),
+				'desc'              => __( '每隔幾小時自動查詢並更新物流狀態（1-24）', 'ys-paynow-shipping' ),
+				'id'                => 'ys_paynow_shipping_cron_interval',
+				'type'              => 'number',
+				'default'           => '6',
+				'css'               => 'width: 80px;',
+				'custom_attributes' => array(
+					'min'  => '1',
+					'max'  => '24',
+					'step' => '1',
+				),
+				'desc_tip'          => true,
+			),
+			// 自訂欄位：下次執行時間
+			array(
+				'type' => 'ys_cron_next_run',
+				'id'   => 'ys_cron_next_run',
+			),
+			array(
+				'title'   => __( '啟用 CRON LOG', 'ys-paynow-shipping' ),
+				'desc'    => __( '記錄排程執行的詳細日誌（獨立於一般除錯 LOG）', 'ys-paynow-shipping' ),
+				'id'      => 'ys_paynow_shipping_cron_log_enabled',
+				'type'    => 'checkbox',
+				'default' => 'no',
+			),
+			// 自訂欄位：LOG 檢視器
+			array(
+				'type' => 'ys_cron_log_viewer',
+				'id'   => 'ys_cron_log_viewer',
+			),
+			array(
+				'type' => 'sectionend',
+				'id'   => 'ys_paynow_shipping_cron_options',
+			),
+		);
+	}
+
+	/**
+	 * 輸出「下次排程執行時間」自訂欄位
+	 *
+	 * @param array $value 欄位設定。
+	 */
+	public function output_cron_next_run( $value ) {
+		$next_timestamp = wp_next_scheduled( 'ys_paynow_status_update' );
+
+		if ( $next_timestamp ) {
+			$wp_tz = wp_timezone();
+			$dt    = new \DateTime( '@' . $next_timestamp );
+			$dt->setTimezone( $wp_tz );
+			$next_time_str = $dt->format( 'Y-m-d H:i:s' );
+
+			// 計算倒數
+			$diff    = $next_timestamp - time();
+			$hours   = floor( $diff / 3600 );
+			$minutes = floor( ( $diff % 3600 ) / 60 );
+
+			if ( $diff > 0 ) {
+				$countdown = sprintf( __( '%d 小時 %d 分鐘後', 'ys-paynow-shipping' ), $hours, $minutes );
+			} else {
+				$countdown = __( '即將執行', 'ys-paynow-shipping' );
+			}
+		} else {
+			$next_time_str = __( '尚未排程', 'ys-paynow-shipping' );
+			$countdown     = '';
+		}
+		?>
+		<tr valign="top">
+			<th scope="row" class="titledesc">
+				<label><?php esc_html_e( '下次執行時間', 'ys-paynow-shipping' ); ?></label>
+			</th>
+			<td class="forminp">
+				<span style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; background: #f0f5f8; border: 1px solid #c5d1d8; border-radius: 6px; font-family: monospace;">
+					<span class="dashicons dashicons-clock" style="color: #8fa8b8;"></span>
+					<?php echo esc_html( $next_time_str ); ?>
+					<?php if ( ! empty( $countdown ) ) : ?>
+						<span style="color: #666; font-size: 12px;">（<?php echo esc_html( $countdown ); ?>）</span>
+					<?php endif; ?>
+				</span>
+			</td>
+		</tr>
+		<?php
+	}
+
+	/**
+	 * 輸出「CRON LOG 檢視器」自訂欄位
+	 *
+	 * @param array $value 欄位設定。
+	 */
+	public function output_cron_log_viewer( $value ) {
+		$is_enabled = 'yes' === get_option( 'ys_paynow_shipping_cron_log_enabled', 'no' );
+		$display    = $is_enabled ? '' : ' style="display: none;"';
+		?>
+		<tr valign="top" id="ys-cron-log-viewer-row"<?php echo $display; ?>>
+			<th scope="row" class="titledesc">
+				<label><?php esc_html_e( 'CRON LOG', 'ys-paynow-shipping' ); ?></label>
+			</th>
+			<td class="forminp">
+				<div style="margin-bottom: 8px; display: flex; gap: 8px;">
+					<button type="button" class="button" id="ys-cron-log-reload">
+						<span class="dashicons dashicons-update" style="font-size: 16px; width: 16px; height: 16px; margin-top: 3px;"></span>
+						<?php esc_html_e( '重新載入', 'ys-paynow-shipping' ); ?>
+					</button>
+					<button type="button" class="button" id="ys-cron-log-clear" style="color: #a00;">
+						<span class="dashicons dashicons-trash" style="font-size: 16px; width: 16px; height: 16px; margin-top: 3px;"></span>
+						<?php esc_html_e( '清除日誌', 'ys-paynow-shipping' ); ?>
+					</button>
+				</div>
+				<pre id="ys-cron-log-content" style="
+					background: #1e1e2e;
+					color: #cdd6f4;
+					padding: 15px;
+					border-radius: 8px;
+					max-height: 400px;
+					overflow-y: auto;
+					font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+					font-size: 12px;
+					line-height: 1.6;
+					white-space: pre-wrap;
+					word-wrap: break-word;
+					border: 1px solid #313244;
+				"><?php esc_html_e( '載入中...', 'ys-paynow-shipping' ); ?></pre>
+				<p class="description"><?php esc_html_e( 'LOG 檔案每 7 天自動清除。儲存位置：WooCommerce > 狀態 > 日誌 > ys-paynow-cron-log', 'ys-paynow-shipping' ); ?></p>
+			</td>
+		</tr>
+		<?php
 	}
 
 	/**

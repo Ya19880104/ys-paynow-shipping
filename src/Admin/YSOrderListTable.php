@@ -57,6 +57,11 @@ class YSOrderListTable {
 	 * @return array 修改後的欄位。
 	 */
 	public static function add_order_columns( $columns ) {
+		// 檢查是否啟用訂單物流欄位顯示
+		if ( 'yes' !== get_option( 'ys_paynow_shipping_show_order_column', 'yes' ) ) {
+			return $columns;
+		}
+
 		// 如果 checkout-optimizer 外掛已啟用訂單增強功能，則不添加此欄位（避免重複）
 		if ( self::is_checkout_optimizer_order_enhancement_enabled() ) {
 			return $columns;
@@ -87,7 +92,12 @@ class YSOrderListTable {
 			return false;
 		}
 
-		// 檢查訂單增強功能是否啟用
+		// 使用 YSSettingsManager 讀取設定（支援自訂資料表）
+		if ( class_exists( 'YangSheep\CheckoutOptimizer\Settings\YSSettingsManager' ) ) {
+			return \YangSheep\CheckoutOptimizer\Settings\YSSettingsManager::get( 'yangsheep_enable_order_enhancement', 'no' ) === 'yes';
+		}
+
+		// Fallback: 檢查 wp_options
 		return get_option( 'yangsheep_enable_order_enhancement', 'no' ) === 'yes';
 	}
 
@@ -123,7 +133,8 @@ class YSOrderListTable {
 
 		$logistic_number = $order->get_meta( YSOrderMeta::LogisticNumber );
 		$delivery_status = $order->get_meta( YSOrderMeta::DeliveryStatus );
-		$service_name    = YSLogisticService::get_service_name( $logistic_service_id );
+		$delivery_type   = $order->get_meta( YSOrderMeta::DeliveryType );
+		$service_name    = YSLogisticService::get_service_name( $logistic_service_id, $delivery_type );
 
 		echo '<div class="ys-paynow-shipping-info">';
 		echo '<strong>' . esc_html( $service_name ) . '</strong><br>';
@@ -163,7 +174,7 @@ class YSOrderListTable {
 			return 'ys-status-waiting'; // 綠色
 		} elseif ( strpos( $status, '已建立' ) !== false || strpos( $status, '建立' ) !== false ) {
 			return 'ys-status-created'; // 藍色
-		} elseif ( strpos( $status, '配送中' ) !== false || strpos( $status, '寄件' ) !== false || strpos( $status, '出貨' ) !== false ) {
+		} elseif ( strpos( $status, '配送中' ) !== false || strpos( $status, '寄件' ) !== false || strpos( $status, '出貨' ) !== false || strpos( $status, '運送' ) !== false || strpos( $status, '集貨' ) !== false || strpos( $status, '暫置' ) !== false || strpos( $status, '轉運' ) !== false || strpos( $status, '理貨' ) !== false ) {
 			return 'ys-status-shipping'; // 橙色
 		} elseif ( strpos( $status, '到店' ) !== false || strpos( $status, '取貨' ) !== false ) {
 			return 'ys-status-arrived'; // 紫色

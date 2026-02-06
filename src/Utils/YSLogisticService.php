@@ -130,24 +130,46 @@ class YSLogisticService {
 	/**
 	 * 取得物流服務名稱
 	 *
-	 * @param string $service_id 物流服務代碼。
+	 * @param string $service_id    物流服務代碼。
+	 * @param string $delivery_type 配送溫層（0001:常溫, 0002:冷藏, 0003:冷凍）。
 	 * @return string 物流服務名稱。
 	 */
-	public static function get_service_name( $service_id ) {
+	public static function get_service_name( $service_id, $delivery_type = '' ) {
 		$names = array(
-			self::SEVEN          => '7-11 交貨便',
-			self::FAMI           => '全家店到店',
+			self::SEVEN          => '7-11 交貨便 (C2C)',
+			self::FAMI           => '全家店到店 (C2C)',
 			self::HILIFE         => '萊爾富店到店',
-			self::SEVENBULK      => '7-11 大宗',
-			self::FAMIBULK       => '全家大宗',
+			self::SEVENBULK      => '7-11 大宗 (B2C)',
+			self::FAMIBULK       => '全家大宗 (B2C)',
 			self::SEVENFROZEN    => '7-11 冷凍 (B2C)',
 			self::FAMIFROZEN     => '全家冷凍 (B2C)',
 			self::SEVENFROZEN_C2C => '7-11 冷凍 (C2C)',
 			self::FAMIFROZEN_C2C  => '全家冷凍 (C2C)',
-			self::TCAT           => '黑貓宅配',
 		);
 
+		// 黑貓宅配根據溫層顯示
+		if ( self::TCAT === $service_id || self::TCAT_OWN === $service_id ) {
+			$temp_name = self::get_delivery_type_name( $delivery_type );
+			return '黑貓宅配 (' . $temp_name . ')';
+		}
+
 		return isset( $names[ $service_id ] ) ? $names[ $service_id ] : $service_id;
+	}
+
+	/**
+	 * 取得配送溫層名稱
+	 *
+	 * @param string $delivery_type 配送類型代碼。
+	 * @return string 溫層名稱。
+	 */
+	public static function get_delivery_type_name( $delivery_type ) {
+		$types = array(
+			'0001' => '常溫',
+			'0002' => '冷藏',
+			'0003' => '冷凍',
+		);
+
+		return isset( $types[ $delivery_type ] ) ? $types[ $delivery_type ] : '常溫';
 	}
 
 	/**

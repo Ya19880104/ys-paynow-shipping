@@ -151,6 +151,10 @@ class YSPaynowShipping {
 		// 註冊 PayNow COD 金流
 		add_filter( 'woocommerce_payment_gateways', array( __CLASS__, 'add_payment_gateway' ) );
 
+		// AJAX: CRON LOG 相關
+		add_action( 'wp_ajax_ys_paynow_get_cron_log', array( __CLASS__, 'ajax_get_cron_log' ) );
+		add_action( 'wp_ajax_ys_paynow_clear_cron_log', array( __CLASS__, 'ajax_clear_cron_log' ) );
+
 		// 初始化子模組
 		YSOrderStatus::init();
 		YSStoreSelector::init();
@@ -908,9 +912,14 @@ class YSPaynowShipping {
 		$store_name      = $order->get_meta( YSOrderMeta::StoreName );
 		$store_addr      = $order->get_meta( YSOrderMeta::StoreAddr );
 		$logistic_no     = $order->get_meta( YSOrderMeta::LogisticNumber );
+		$payment_no      = $order->get_meta( YSOrderMeta::PaymentNo );
 		$delivery_status = $order->get_meta( YSOrderMeta::DeliveryStatus ); // Raw status
 		$update_time     = $order->get_meta( YSOrderMeta::StatusUpdateAt );
 		$is_printed      = $order->get_meta( '_ys_label_printed' ) === 'yes';
+
+		// 前端顯示用: 優先顯示託運單號 (PaymentNo)，若無則降回物流單號
+		$display_no    = ! empty( $payment_no ) ? $payment_no : $logistic_no;
+		$display_label = ! empty( $payment_no ) ? __( '託運單號', 'ys-paynow-shipping' ) : __( '物流單號', 'ys-paynow-shipping' );
 
         // 取得運送方式名稱
         $shipping_method_title = '';
@@ -978,8 +987,11 @@ class YSPaynowShipping {
                       $current_step = 4;
                  }
                  $display_status = $scan_status;
-            } elseif ( strpos( $scan_status, '運送' ) !== false || strpos( $scan_status, '出貨' ) !== false || strpos( $scan_status, '離店' ) !== false ) {
+            } elseif ( strpos( $scan_status, '運送' ) !== false || strpos( $scan_status, '離店' ) !== false || strpos( $scan_status, '集貨' ) !== false || strpos( $scan_status, '暫置' ) !== false || strpos( $scan_status, '轉運' ) !== false || strpos( $scan_status, '配送' ) !== false || strpos( $scan_status, '理貨' ) !== false ) {
                 $current_step = 3;
+                $display_status = $scan_status;
+            } elseif ( strpos( $scan_status, '等待' ) !== false || strpos( $scan_status, '寄件' ) !== false || strpos( $scan_status, '出貨' ) !== false || strpos( $scan_status, '準備' ) !== false ) {
+                $current_step = 2;
                 $display_status = $scan_status;
             } elseif ( strpos( $scan_status, '成立' ) === false ) {
                  // Other intermediate status?
@@ -1058,12 +1070,12 @@ class YSPaynowShipping {
 					</li>
 					<?php endif; ?>
 					
-					<?php if ( ! empty( $logistic_no ) ) : ?>
+					<?php if ( ! empty( $display_no ) ) : ?>
 					<li>
 						<span class="ys-icon"><i class="fas fa-barcode"></i></span>
-						<span class="ys-label"><?php esc_html_e( '物流單號', 'ys-paynow-shipping' ); ?></span>
-						<span class="ys-value ys-copyable" data-clipboard-text="<?php echo esc_attr( $logistic_no ); ?>">
-							<?php echo esc_html( $logistic_no ); ?> 
+						<span class="ys-label"><?php echo esc_html( $display_label ); ?></span>
+						<span class="ys-value ys-copyable" data-clipboard-text="<?php echo esc_attr( $display_no ); ?>">
+							<?php echo esc_html( $display_no ); ?> 
 							<i class="far fa-copy" style="margin-left: 5px;"></i>
 						</span>
 					</li>
@@ -1542,7 +1554,71 @@ class YSPaynowShipping {
 	public static function log( $message, $level = 'info' ) {
 		if ( ! self::$logger ) {
 			self::$logger = wc_get_logger();
+			// 註冊 LOG 時區修正 filter（只需一次）
+			add_filter( 'woocommerce_format_log_entry', array( __CLASS__, 'fix_log_timezone' ), 10, 2 );
 		}
 		self::$logger->log( $level, $message, array( 'source' => 'ys-paynow-shipping' ) );
+	}
+
+	/**
+	 * 修正 LOG 時間戳為 WordPress 設定的時區
+	 *
+	 * WooCommerce Logger 預設使用 UTC（因 WordPress 強制 PHP 時區為 UTC）。
+	 * 此 filter 將本外掛的 LOG 時間戳轉為 WordPress 後台設定的時區。
+	 *
+	 * @param string $entry 格式化後的 LOG 字串。
+	 * @param array  $data  包含 timestamp, level, message, context。
+	 * @return string 修正時區後的 LOG 字串。
+	 */
+	public static function fix_log_timezone( $entry, $data ) {
+		// 只修正本外掛的 LOG（含 CRON LOG）
+		$allowed_sources = array( 'ys-paynow-shipping', 'ys-paynow-cron-log' );
+		if ( ! isset( $data['context']['source'] ) || ! in_array( $data['context']['source'], $allowed_sources, true ) ) {
+			return $entry;
+		}
+
+		try {
+			$wp_timezone = wp_timezone();
+			$dt = new \DateTime( '@' . $data['timestamp'] );
+			$dt->setTimezone( $wp_timezone );
+			$local_time = $dt->format( 'c' );
+
+			// 替換 entry 開頭的 UTC 時間戳
+			$entry = preg_replace( '/^\S+/', $local_time, $entry );
+		} catch ( \Exception $e ) {
+			// 轉換失敗時保持原樣
+		}
+
+		return $entry;
+	}
+
+	/**
+	 * AJAX: 取得 CRON LOG 內容
+	 */
+	public static function ajax_get_cron_log() {
+		check_ajax_referer( 'ys-paynow-shipping-admin', 'nonce' );
+
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( __( '權限不足', 'ys-paynow-shipping' ) );
+		}
+
+		$content = YSStatusUpdater::get_cron_log_content( 200 );
+		wp_send_json_success( array( 'content' => $content ) );
+	}
+
+	/**
+	 * AJAX: 清除 CRON LOG
+	 */
+	public static function ajax_clear_cron_log() {
+		check_ajax_referer( 'ys-paynow-shipping-admin', 'nonce' );
+
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( __( '權限不足', 'ys-paynow-shipping' ) );
+		}
+
+		$count = YSStatusUpdater::clear_cron_log_files();
+		wp_send_json_success( array(
+			'message' => sprintf( __( '已清除 %d 個 LOG 檔案', 'ys-paynow-shipping' ), $count ),
+		) );
 	}
 }

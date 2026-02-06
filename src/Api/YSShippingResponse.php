@@ -68,7 +68,8 @@ class YSShippingResponse {
 	 */
 	public static function init() {
 		// 註冊 Webhook endpoint (貨態回傳)
-		add_action( 'woocommerce_api_ys-paynow-shipping-callback', array( __CLASS__, 'handle_callback' ) );
+		// 端點：/wc-api/ys-paynow-response/
+		add_action( 'woocommerce_api_ys-paynow-response', array( __CLASS__, 'handle_callback' ) );
 
 		// 根據貨態更新訂單狀態
 		add_action( 'ys_paynow_shipping_status_updated', array( __CLASS__, 'update_order_status_by_logistic_code' ), 10, 2 );
@@ -92,11 +93,51 @@ class YSShippingResponse {
 	 */
 	public static function handle_callback() {
 		// phpcs:disable WordPress.Security.NonceVerification.Missing
+
+		// 檢查請求方式
+		$request_method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : 'unknown';
+		$content_type   = isset( $_SERVER['CONTENT_TYPE'] ) ? sanitize_text_field( wp_unslash( $_SERVER['CONTENT_TYPE'] ) ) : '';
+		if ( empty( $content_type ) && isset( $_SERVER['HTTP_CONTENT_TYPE'] ) ) {
+			$content_type = sanitize_text_field( wp_unslash( $_SERVER['HTTP_CONTENT_TYPE'] ) );
+		}
+
+		// 非 POST 請求直接忽略（GET 可能是爬蟲或健康檢查）
+		if ( 'POST' !== $request_method ) {
+			YSPaynowShipping::log( sprintf( '[Webhook] 忽略非 POST 請求 (Method=%s)，可能是爬蟲或健康檢查', $request_method ) );
+			wp_die( 'Method not allowed', 'YS PayNow Shipping', array( 'response' => 405 ) );
+		}
+
+		YSPaynowShipping::log( sprintf( '[Webhook] 收到 POST 請求 (Content-Type: %s)', $content_type ?: 'empty' ) );
+
+		// 嘗試從 $_POST 取得資料
 		$posted = wc_clean( wp_unslash( $_POST ) );
-		YSPaynowShipping::log( 'Webhook receive_order_status_update: ' . wp_json_encode( $posted ) );
+
+		// 若 $_POST 為空，嘗試從 php://input 讀取（可能是 JSON body 或 nginx 攔截）
+		if ( empty( $posted ) ) {
+			$raw_body = file_get_contents( 'php://input' );
+
+			if ( ! empty( $raw_body ) ) {
+				YSPaynowShipping::log( '[Webhook] $_POST 為空，嘗試從 php://input 解析...' );
+				// 嘗試 JSON 解碼
+				$json_data = json_decode( $raw_body, true );
+				if ( json_last_error() === JSON_ERROR_NONE && is_array( $json_data ) ) {
+					$posted = wc_clean( $json_data );
+					YSPaynowShipping::log( '[Webhook] 成功解析為 JSON 格式' );
+				} else {
+					// 嘗試解析為 query string (application/x-www-form-urlencoded)
+					parse_str( $raw_body, $parsed );
+					if ( ! empty( $parsed ) ) {
+						$posted = wc_clean( $parsed );
+						YSPaynowShipping::log( '[Webhook] 成功解析為 form-urlencoded 格式' );
+					}
+				}
+			} else {
+				YSPaynowShipping::log( '[Webhook] $_POST 和 php://input 都是空的', 'error' );
+			}
+		}
 
 		if ( empty( $posted ) ) {
-			YSPaynowShipping::log( 'Webhook: Empty data received', 'error' );
+			YSPaynowShipping::log( '[Webhook] 無法取得任何資料，中止處理', 'error' );
 			wp_die( 'Invalid data', 'YS PayNow Shipping', array( 'response' => 400 ) );
 		}
 
@@ -108,18 +149,30 @@ class YSShippingResponse {
 		$payment_no            = isset( $posted['paymentno'] ) ? sanitize_text_field( $posted['paymentno'] ) : '';
 		$store_date            = isset( $posted['StoreDate'] ) ? sanitize_text_field( $posted['StoreDate'] ) : '';
 		$store_time            = isset( $posted['StoreTime'] ) ? sanitize_text_field( $posted['StoreTime'] ) : '';
+		$logistic_number       = isset( $posted['LogisticNumber'] ) ? sanitize_text_field( $posted['LogisticNumber'] ) : '';
+
+		// 結構化 LOG：一次記錄所有關鍵欄位
+		YSPaynowShipping::log( sprintf(
+			'[Webhook] 收到貨態推送 → 訂單: %s | 狀態碼: %s | 狀態: %s | 託運單號: %s | 物流單號: %s | 到店: %s %s',
+			$order_no ?: '(空)',
+			$paynow_logistic_code ?: '(空)',
+			$detailed_status ?: '(空)',
+			$payment_no ?: '(空)',
+			$logistic_number ?: '(空)',
+			$store_date ?: '-',
+			$store_time ?: ''
+		) );
 
 		if ( empty( $order_no ) ) {
-			YSPaynowShipping::log( 'Webhook: Missing orderno', 'error' );
+			YSPaynowShipping::log( '[Webhook] 錯誤：缺少 orderno 欄位', 'error' );
 			wp_die( 'Missing orderno', 'YS PayNow Shipping', array( 'response' => 400 ) );
 		}
 
 		// 查找訂單
-		// 注意：orderno 可能有前綴，需要處理
 		$order = self::find_order_by_order_no( $order_no );
 
 		if ( ! $order ) {
-			YSPaynowShipping::log( sprintf( 'Webhook: Order not found for orderno: %s', $order_no ), 'error' );
+			YSPaynowShipping::log( sprintf( '[Webhook] 錯誤：找不到訂單 (orderno: %s)', $order_no ), 'error' );
 			wp_die( 'Order not found', 'YS PayNow Shipping', array( 'response' => 404 ) );
 		}
 
@@ -159,7 +212,7 @@ class YSShippingResponse {
 		);
 		$order->add_order_note( $note );
 
-		YSPaynowShipping::log( sprintf( 'Order #%d status updated via webhook: %s', $order->get_id(), $detailed_status ) );
+		YSPaynowShipping::log( sprintf( '[Webhook] 訂單 #%d 更新完成 → 狀態碼: %s, 狀態: %s', $order->get_id(), $paynow_logistic_code, $detailed_status ) );
 
 		// 觸發 action，根據物流代碼更新訂單狀態
 		do_action( 'ys_paynow_shipping_status_updated', $order, $paynow_logistic_code );
@@ -226,7 +279,7 @@ class YSShippingResponse {
 			return;
 		}
 
-		YSPaynowShipping::log( sprintf( 'Update order status. Order id: %d, logistic code: %s', $order->get_id(), $logistic_code ) );
+		YSPaynowShipping::log( sprintf( '[Webhook] 檢查訂單 #%d 狀態對應 (狀態碼: %s)', $order->get_id(), $logistic_code ) );
 
 		// 檢查是否啟用自動狀態更新
 		$auto_update = get_option( 'ys_paynow_shipping_auto_update_status', 'yes' );
@@ -246,7 +299,7 @@ class YSShippingResponse {
 					str_replace( 'wc-', '', $new_status ),
 					__( 'PayNow 貨態回傳自動更新狀態', 'ys-paynow-shipping' )
 				);
-				YSPaynowShipping::log( sprintf( 'Order #%d status changed from %s to %s', $order->get_id(), $current_status, $new_status ) );
+				YSPaynowShipping::log( sprintf( '[Webhook] 訂單 #%d WC 狀態變更: %s → %s', $order->get_id(), $current_status, $new_status ) );
 			}
 		}
 	}

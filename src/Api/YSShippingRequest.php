@@ -93,7 +93,7 @@ class YSShippingRequest {
 			$response = self::api_create_order( $order );
 			$resp_obj = json_decode( wp_remote_retrieve_body( $response ) );
 
-			YSPaynowShipping::log( sprintf( 'Create order #%d response: %s', $order->get_id(), wp_json_encode( $resp_obj ) ) );
+			YSPaynowShipping::log( sprintf( 'Create order #%d response: %s', $order->get_id(), wp_json_encode( $resp_obj, JSON_UNESCAPED_UNICODE ) ) );
 
 			if ( isset( $resp_obj->Status ) && 'F' === $resp_obj->Status ) {
 				/* translators: %s: Error message */
@@ -130,7 +130,7 @@ class YSShippingRequest {
 	public static function api_create_order( $order ) {
 		$args = self::build_create_order_args( $order );
 
-		YSPaynowShipping::log( 'Create order args: ' . wp_json_encode( $args ) );
+		YSPaynowShipping::log( 'Create order args: ' . wp_json_encode( $args, JSON_UNESCAPED_UNICODE ) );
 
 		$encrypted_json = self::build_encrypted_args( $args );
 		$url            = YSPaynowShipping::$api_url . '/api/Orderapi/Add_Order';
@@ -184,7 +184,7 @@ class YSShippingRequest {
 			'Sender_Name'      => get_option( 'ys_paynow_shipping_sender_name', '' ),
 			'Sender_Phone'     => get_option( 'ys_paynow_shipping_sender_phone', '' ),
 			'Sender_Email'     => get_option( 'ys_paynow_shipping_sender_email', '' ),
-			'Sender_address'   => get_option( 'ys_paynow_shipping_sender_address', '' ),
+			'Sender_address'   => self::get_sender_address(),
 
 			'Remark'           => '',
 		);
@@ -297,29 +297,64 @@ class YSShippingRequest {
 
 		YSPaynowShipping::log( 'Query order #' . $order_id . ' response: ' . $body );
 
-		// API 回傳的欄位是 Delivery_Status (有底線)
-		if ( isset( $resp_obj->Delivery_Status ) ) {
+		// 檢查 API 是否有回傳有效資料（LogisticNumber 或 Detail_Status_Description）
+		if ( ! empty( $resp_obj->ErrorMsg ) ) {
+			wp_send_json_error( $resp_obj->ErrorMsg );
+		}
+
+		// 取得物流狀態：宅配優先 Detail_Status_Description，超取優先 Delivery_Status
+		$logistic_service_id = $order->get_meta( YSOrderMeta::LogisticServiceId );
+		$is_home_delivery    = in_array( $logistic_service_id, array( '06', '36' ), true );
+
+		$status_text = null;
+		if ( $is_home_delivery && ! empty( $resp_obj->Detail_Status_Description ) ) {
+			$status_text = $resp_obj->Detail_Status_Description;
+		} elseif ( ! empty( $resp_obj->Delivery_Status ) ) {
+			$status_text = $resp_obj->Delivery_Status;
+		} elseif ( ! empty( $resp_obj->Detail_Status_Description ) ) {
+			$status_text = $resp_obj->Detail_Status_Description;
+		}
+
+		if ( null !== $status_text || property_exists( $resp_obj, 'LogisticNumber' ) ) {
 			// 更新物流狀態
-			$order->update_meta_data( YSOrderMeta::DeliveryStatus, $resp_obj->Delivery_Status );
+			if ( null !== $status_text ) {
+				$order->update_meta_data( YSOrderMeta::DeliveryStatus, $status_text );
+			}
 			$order->update_meta_data( YSOrderMeta::StatusUpdateAt, current_time( 'mysql' ) );
-			
+
 			// 更新其他欄位
-			if ( isset( $resp_obj->paymentno ) ) {
+			if ( ! empty( $resp_obj->paymentno ) ) {
 				$order->update_meta_data( YSOrderMeta::PaymentNo, $resp_obj->paymentno );
 			}
-			if ( isset( $resp_obj->validationno ) ) {
+			if ( ! empty( $resp_obj->validationno ) ) {
 				$order->update_meta_data( YSOrderMeta::ValidationNo, $resp_obj->validationno );
 			}
+
+			// 根據 PayNowLogisticCode 更新 WC 訂單狀態
+			$status_code = $resp_obj->PayNowLogisticCode ?? '';
+			if ( ! empty( $status_code ) ) {
+				$order->update_meta_data( YSOrderMeta::LogisticCode, $status_code );
+				if ( ! empty( $resp_obj->Detail_Status_Description ) ) {
+					$order->update_meta_data( YSOrderMeta::DetailStatusDesc, $resp_obj->Detail_Status_Description );
+				}
+
+				$new_status = \YangSheep\PayNow\Shipping\Utils\YSShippingStatus::get_wc_status_from_paynow_status( $status_code );
+				if ( $new_status && $new_status !== 'wc-' . $order->get_status() && $new_status !== $order->get_status() ) {
+					$order->update_status(
+						str_replace( 'wc-', '', $new_status ),
+						sprintf( __( '管理員查詢貨態更新: %s (%s)', 'ys-paynow-shipping' ), $status_text, $status_code )
+					);
+				}
+			}
+
 			$order->save();
 
 			wp_send_json_success( array(
 				'message' => __( '查詢成功', 'ys-paynow-shipping' ),
-				'status'  => $resp_obj->Delivery_Status,
+				'status'  => $status_text ?? __( '已建立', 'ys-paynow-shipping' ),
 			) );
 		} else {
-			// 檢查是否有錯誤訊息
-			$error_msg = isset( $resp_obj->ErrorMsg ) ? $resp_obj->ErrorMsg : __( '查詢失敗', 'ys-paynow-shipping' );
-			wp_send_json_error( $error_msg );
+			wp_send_json_error( __( '查詢失敗', 'ys-paynow-shipping' ) );
 		}
 	}
 
@@ -371,22 +406,37 @@ class YSShippingRequest {
 		}
 
 		if ( $is_success ) {
-			// 更新物流狀態 - 注意 API 回傳的 key 是 Delivery_Status 不是 DeliveryStatus
-			$status_desc = $resp_obj->Delivery_Status ?? $resp_obj->DeliveryStatus ?? '';
-			
+			// 更新物流狀態 — 宅配優先 Detail_Status_Description，超取優先 Delivery_Status
+			$logistic_service_id = $order->get_meta( YSOrderMeta::LogisticServiceId );
+			$is_home_delivery    = in_array( $logistic_service_id, array( '06', '36' ), true );
+
+			$status_desc = '';
+			if ( $is_home_delivery && ! empty( $resp_obj->Detail_Status_Description ) ) {
+				$status_desc = $resp_obj->Detail_Status_Description;
+			} elseif ( ! empty( $resp_obj->Delivery_Status ) ) {
+				$status_desc = $resp_obj->Delivery_Status;
+			} elseif ( ! empty( $resp_obj->Detail_Status_Description ) ) {
+				$status_desc = $resp_obj->Detail_Status_Description;
+			}
+
 			if ( ! empty( $status_desc ) ) {
 				$order->update_meta_data( YSOrderMeta::DeliveryStatus, $status_desc );
 			}
-			
+
+			// 更新其他 Meta（與管理員端 / CRON 一致）
+			if ( ! empty( $resp_obj->paymentno ) ) {
+				$order->update_meta_data( YSOrderMeta::PaymentNo, $resp_obj->paymentno );
+			}
+			if ( ! empty( $resp_obj->Detail_Status_Description ) ) {
+				$order->update_meta_data( YSOrderMeta::DetailStatusDesc, $resp_obj->Detail_Status_Description );
+			}
+
 			// 自動更新訂單狀態 (與 Cron 邏輯一致)
 			$status_code = $resp_obj->PayNowLogisticCode ?? '';
-			// 若 API 回傳無 Code，嘗試使用 DeliveryStatus (需非常小心，暫不實作以免誤判)
-			
-			// 根據 browser agent 資訊，TCAT API 回傳可能有差異，但 status_code 應可在某處找到
-			// 若有 status_code，則進行對應
 			if ( ! empty( $status_code ) ) {
+				$order->update_meta_data( YSOrderMeta::LogisticCode, $status_code );
 				$new_status = \YangSheep\PayNow\Shipping\Utils\YSShippingStatus::get_wc_status_from_paynow_status( $status_code );
-				
+
 				if ( $new_status && $new_status !== 'wc-' . $order->get_status() && $new_status !== $order->get_status() ) {
 					$order->update_status( $new_status, sprintf( __( '用戶前台更新貨態: %s (%s)', 'ys-paynow-shipping' ), $status_desc, $status_code ) );
 				}
@@ -395,40 +445,51 @@ class YSShippingRequest {
 			$order->update_meta_data( YSOrderMeta::StatusUpdateAt, current_time( 'mysql' ) );
 			$order->save();
 
-			// 計算狀態 Class (新版邏輯)
-			// 預設為訂單成立（步驟 1）
+			// 判定流程類別 (宅配 vs 超取)，與 display_shipping_detail 邏輯一致
+			$logistic_service_id = $order->get_meta( YSOrderMeta::LogisticServiceId );
+			$shipping_method_title = '';
+			foreach ( $order->get_shipping_methods() as $shipping_method ) {
+				$shipping_method_title = $shipping_method->get_name();
+				break;
+			}
+			$flow_type = 'cvs';
+			if ( in_array( $logistic_service_id, array( '06', '36' ), true ) || strpos( $shipping_method_title, '宅配' ) !== false || strpos( $shipping_method_title, '黑貓' ) !== false ) {
+				$flow_type = 'home';
+			}
+			$total_steps = ( 'home' === $flow_type ) ? 4 : 5;
+
+			// 計算狀態 Class（依據流程類別動態計算）
 			$current_step = 1;
 			$status_key   = 'pending';
 			$status_class = 'status-pending';
-			$progress_pct = '0%';
 
 			if ( ! empty( $status_desc ) ) {
-				if ( strpos( $status_desc, '取貨' ) !== false || strpos( $status_desc, '完成' ) !== false ) {
-					// 已取貨/完成 - 步驟 5（超取）或 4（宅配）
-					$current_step = 5;
+				if ( strpos( $status_desc, '取貨' ) !== false || strpos( $status_desc, '完成' ) !== false || strpos( $status_desc, '已取' ) !== false ) {
+					$current_step = $total_steps; // 最後一步
 					$status_key   = 'completed';
 					$status_class = 'status-completed';
-					$progress_pct = '100%';
-				} elseif ( strpos( $status_desc, '到店' ) !== false || strpos( $status_desc, '待取' ) !== false ) {
-					// 已到店/待取 - 步驟 4
-					$current_step = 4;
+				} elseif ( strpos( $status_desc, '到店' ) !== false || strpos( $status_desc, '待取' ) !== false || strpos( $status_desc, '配達' ) !== false ) {
+					if ( 'home' === $flow_type ) {
+						$current_step = ( strpos( $status_desc, '配達' ) !== false ) ? 4 : 3;
+					} else {
+						$current_step = 4; // 已到店
+					}
 					$status_key   = 'arrived';
 					$status_class = 'status-arrived';
-					$progress_pct = '75%';
-				} elseif ( strpos( $status_desc, '運送' ) !== false || strpos( $status_desc, '離店' ) !== false || strpos( $status_desc, '集貨' ) !== false ) {
-					// 運送中/離店/集貨 - 步驟 3
+				} elseif ( strpos( $status_desc, '運送' ) !== false || strpos( $status_desc, '離店' ) !== false || strpos( $status_desc, '集貨' ) !== false || strpos( $status_desc, '暫置' ) !== false || strpos( $status_desc, '轉運' ) !== false || strpos( $status_desc, '配送' ) !== false || strpos( $status_desc, '理貨' ) !== false ) {
 					$current_step = 3;
 					$status_key   = 'shipping';
 					$status_class = 'status-shipping';
-					$progress_pct = '50%';
 				} elseif ( strpos( $status_desc, '等待' ) !== false || strpos( $status_desc, '寄件' ) !== false || strpos( $status_desc, '出貨' ) !== false || strpos( $status_desc, '準備' ) !== false ) {
-					// 等待寄件/準備出貨 - 步驟 2（商品準備中）
 					$current_step = 2;
 					$status_key   = 'waiting';
 					$status_class = 'status-waiting';
-					$progress_pct = '25%';
 				}
 			}
+
+			// 根據步驟數動態計算進度百分比（與初始渲染公式一致）
+			$step_percent = ( $current_step - 1 ) / ( $total_steps - 1 ) * 100;
+			$progress_pct = max( 0, min( 100, $step_percent ) ) . '%';
 
 			// 保留舊版邏輯作為 fallback 或 backward compatibility (雖然後端可能不再依賴它)
 			// $wc_status = $order->get_status(); ... 
@@ -587,8 +648,23 @@ class YSShippingRequest {
 			$query_response = self::api_query_order( $order );
 			if ( ! is_wp_error( $query_response ) ) {
 				$resp_obj = json_decode( wp_remote_retrieve_body( $query_response ) );
-				if ( isset( $resp_obj->Delivery_Status ) ) {
-					$order->update_meta_data( YSOrderMeta::DeliveryStatus, $resp_obj->Delivery_Status );
+				if ( isset( $resp_obj->Delivery_Status ) || isset( $resp_obj->Detail_Status_Description ) ) {
+					// 宅配優先 Detail_Status_Description，超取優先 Delivery_Status
+					$logistic_service_id = $order->get_meta( YSOrderMeta::LogisticServiceId );
+					$is_home_delivery    = in_array( $logistic_service_id, array( '06', '36' ), true );
+
+					$status_desc = '';
+					if ( $is_home_delivery && ! empty( $resp_obj->Detail_Status_Description ) ) {
+						$status_desc = $resp_obj->Detail_Status_Description;
+					} elseif ( ! empty( $resp_obj->Delivery_Status ) ) {
+						$status_desc = $resp_obj->Delivery_Status;
+					} elseif ( ! empty( $resp_obj->Detail_Status_Description ) ) {
+						$status_desc = $resp_obj->Detail_Status_Description;
+					}
+
+					if ( ! empty( $status_desc ) ) {
+						$order->update_meta_data( YSOrderMeta::DeliveryStatus, $status_desc );
+					}
 					$order->update_meta_data( YSOrderMeta::StatusUpdateAt, current_time( 'mysql' ) );
 					if ( isset( $resp_obj->paymentno ) ) {
 						$order->update_meta_data( YSOrderMeta::PaymentNo, $resp_obj->paymentno );
@@ -1074,10 +1150,40 @@ class YSShippingRequest {
 	/**
 	 * 取得訂單收件地址
 	 *
+	 * 組合順序：郵遞區號 + 縣市 + 鄉鎮市區 + 地址
+	 * 黑貓宅急便 API 需要郵遞區號才能正確驗證地址
+	 *
+	 * 在台灣 WooCommerce 設定中：
+	 * - get_shipping_postcode() = 郵遞區號（如「114」）
+	 * - get_shipping_state() = 縣市（如「臺北市」）
+	 * - get_shipping_city() = 鄉鎮市區（如「內湖區」）
+	 *
 	 * @param \WC_Order $order 訂單物件。
 	 * @return string 收件地址。
 	 */
 	private static function get_order_address( $order ) {
-		return $order->get_shipping_city() . $order->get_shipping_state() . $order->get_shipping_address_1() . $order->get_shipping_address_2();
+		$postcode = $order->get_shipping_postcode();
+		$state    = $order->get_shipping_state();
+		$city     = $order->get_shipping_city();
+		$address1 = $order->get_shipping_address_1();
+		$address2 = $order->get_shipping_address_2();
+
+		// 組合地址：郵遞區號 + 縣市 + 鄉鎮市區 + 地址（黑貓需要郵遞區號）
+		return $postcode . $state . $city . $address1 . $address2;
+	}
+
+	/**
+	 * 取得寄件人完整地址
+	 *
+	 * 組合郵遞區號和地址，黑貓宅配需要郵遞區號才能驗證地址。
+	 *
+	 * @return string 完整寄件人地址（郵遞區號 + 地址）。
+	 */
+	private static function get_sender_address() {
+		$postcode = get_option( 'ys_paynow_shipping_sender_postcode', '' );
+		$address  = get_option( 'ys_paynow_shipping_sender_address', '' );
+
+		// 組合地址：郵遞區號 + 地址
+		return $postcode . $address;
 	}
 }

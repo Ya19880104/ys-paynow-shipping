@@ -136,6 +136,7 @@ class YSOrderMetaBox {
 		$payment_no      = $order->get_meta( YSOrderMeta::PaymentNo );
 		$validation_no   = $order->get_meta( YSOrderMeta::ValidationNo );
 		$delivery_status = $order->get_meta( YSOrderMeta::DeliveryStatus );
+		$delivery_type   = $order->get_meta( YSOrderMeta::DeliveryType );
 		$status_update   = $order->get_meta( YSOrderMeta::StatusUpdateAt );
 		$store_date      = $order->get_meta( YSOrderMeta::StoreDate );
 		$store_time      = $order->get_meta( YSOrderMeta::StoreTime );
@@ -145,7 +146,7 @@ class YSOrderMetaBox {
 		<div class="ys-paynow-meta-box">
 			<p>
 				<strong><?php esc_html_e( '物流服務：', 'ys-paynow-shipping' ); ?></strong>
-				<?php echo esc_html( YSLogisticService::get_service_name( $logistic_service_id ) ); ?>
+				<?php echo esc_html( YSLogisticService::get_service_name( $logistic_service_id, $delivery_type ) ); ?>
 			</p>
 
 			<?php if ( ! empty( $store_name ) ) : ?>
@@ -292,7 +293,8 @@ class YSOrderMetaBox {
 				$order->update_meta_data( YSOrderMeta::LogisticServiceId, $new_service_id );
 				
 				// 更新訂單項目名稱 (顯示用)
-				$new_service_name = \YangSheep\PayNow\Shipping\Utils\YSLogisticService::get_service_name( $new_service_id );
+				$new_delivery_type = $order->get_meta( YSOrderMeta::DeliveryType );
+				$new_service_name = \YangSheep\PayNow\Shipping\Utils\YSLogisticService::get_service_name( $new_service_id, $new_delivery_type );
 				$shipping_items = $order->get_items( 'shipping' );
 				foreach ( $shipping_items as $item ) {
 					// 假設通常只有一個運送方式，直接更新名稱

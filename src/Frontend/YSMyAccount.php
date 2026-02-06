@@ -44,8 +44,13 @@ class YSMyAccount {
 	 * @return array 修改後的欄位。
 	 */
 	public static function add_shipping_status_column( $columns ) {
+		// 檢查是否啟用訂單物流欄位顯示
+		if ( 'yes' !== get_option( 'ys_paynow_shipping_show_order_column', 'yes' ) ) {
+			return $columns;
+		}
+
 		// 如果已啟用 YangSheep Checkout Optimizer 的訂單強化功能，則不顯示原本的欄位
-		if ( 'yes' === get_option( 'yangsheep_enable_order_enhancement', 'no' ) ) {
+		if ( self::is_checkout_optimizer_order_enhancement_enabled() ) {
 			return $columns;
 		}
 
@@ -79,9 +84,10 @@ class YSMyAccount {
 
 		$logistic_number = $order->get_meta( YSOrderMeta::LogisticNumber );
 		$delivery_status = $order->get_meta( YSOrderMeta::DeliveryStatus );
+		$delivery_type   = $order->get_meta( YSOrderMeta::DeliveryType );
 		$store_date      = $order->get_meta( YSOrderMeta::StoreDate );
 		$store_time      = $order->get_meta( YSOrderMeta::StoreTime );
-		$service_name    = YSLogisticService::get_service_name( $logistic_service_id );
+		$service_name    = YSLogisticService::get_service_name( $logistic_service_id, $delivery_type );
 
 		echo '<div class="ys-shipping-status-cell">';
 		echo '<small style="color: #666;">' . esc_html( $service_name ) . '</small><br>';
@@ -118,7 +124,7 @@ class YSMyAccount {
 			return 'ys-status-waiting';
 		} elseif ( strpos( $status, '已建立' ) !== false || strpos( $status, '建立' ) !== false ) {
 			return 'ys-status-created';
-		} elseif ( strpos( $status, '配送中' ) !== false || strpos( $status, '寄件' ) !== false || strpos( $status, '出貨' ) !== false ) {
+		} elseif ( strpos( $status, '配送中' ) !== false || strpos( $status, '寄件' ) !== false || strpos( $status, '出貨' ) !== false || strpos( $status, '運送' ) !== false || strpos( $status, '集貨' ) !== false || strpos( $status, '暫置' ) !== false || strpos( $status, '轉運' ) !== false || strpos( $status, '理貨' ) !== false ) {
 			return 'ys-status-shipping';
 		} elseif ( strpos( $status, '到店' ) !== false || strpos( $status, '取貨' ) !== false ) {
 			return 'ys-status-arrived';
@@ -128,6 +134,26 @@ class YSMyAccount {
 			return 'ys-status-cancelled';
 		}
 		return 'ys-status-default';
+	}
+
+	/**
+	 * 檢查 checkout-optimizer 外掛是否啟用訂單增強功能
+	 *
+	 * @return bool
+	 */
+	private static function is_checkout_optimizer_order_enhancement_enabled() {
+		// 檢查外掛是否存在並啟用
+		if ( ! class_exists( 'YANGSHEEP_Checkout_Order_Enhancer' ) ) {
+			return false;
+		}
+
+		// 使用 YSSettingsManager 讀取設定（支援自訂資料表）
+		if ( class_exists( 'YangSheep\CheckoutOptimizer\Settings\YSSettingsManager' ) ) {
+			return \YangSheep\CheckoutOptimizer\Settings\YSSettingsManager::get( 'yangsheep_enable_order_enhancement', 'no' ) === 'yes';
+		}
+
+		// Fallback: 檢查 wp_options
+		return get_option( 'yangsheep_enable_order_enhancement', 'no' ) === 'yes';
 	}
 
 	/**

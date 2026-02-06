@@ -4,8 +4,8 @@
 
 ## 版本資訊
 
-**當前版本**：1.1.0
-**最後更新**：2026-01-12
+**當前版本**：1.2.0
+**最後更新**：2026-02-06
 **開發者**：羊羊數位科技有限公司（YANGSHEEP DESIGN）
 **網站**：https://yangsheep.com.tw
 **命名空間**：`YangSheep\PayNow\Shipping`
@@ -280,6 +280,33 @@ WooCommerce > 設定 > 運送 > YS PayNow
 ---
 
 ## 版本紀錄
+
+### v1.2.0 (2026-02-06)
+
+#### 修復
+- **Webhook 端點 URL 修正** - 回傳網址從 `ys-paynow-shipping-callback` 更正為 `ys-paynow-response`
+- **CRON 排程三項修正** - Status 判斷 `'S'`→`'1'`、欄位名 `DeliveryStatus`→`Delivery_Status`、回應解析修正
+- **前台進度條回退 BUG** - 宅配訂單按下「更新貨態」後進度線條從運送中退回商品準備中的問題，改為根據流程類型（宅配 4 步驟 / 超取 5 步驟）動態計算進度百分比
+- **訂單列表 / 我的帳號物流狀態關鍵字** - `get_status_class()` 新增轉運、理貨、暫置等運送中狀態判斷
+
+#### 新增
+- **黑貓物流狀態碼** - 新增 4060（理貨中）、4500（集貨轉運中）、5500（配送中）、5505（暫置營業所）、8500（配送完成）、8520（收退）
+- **後台查詢同步 WC 訂單狀態** - 管理員查詢貨態時自動更新 WooCommerce 訂單狀態
+- **Webhook php://input 備援** - `$_POST` 為空時自動使用 `php://input` 讀取回傳內容
+
+#### 改進
+- **前端顯示託運單號** - 前台訂單詳情頁優先顯示託運單號（PaymentNo），非物流單號（LogisticNumber），標籤動態切換
+- **CRON 排程頻率提高** - 從每日一次改為每 6 小時一次，加速物流狀態同步
+- **API 完整 LOG 紀錄** - 管理員查詢、前台用戶查詢、建立物流單、CRON 排程均記錄完整 API 回應
+
+#### 技術變更
+- `YSStatusUpdater.php` - 自訂 `every_six_hours` cron interval，自動移除舊的 daily 排程
+- `YSShippingRequest.php` - AJAX 回應改為 flow_type-aware 動態進度計算
+- `YSPaynowShipping.php` - 新增 `$display_no` / `$display_label` 邏輯
+- `ys-paynow-frontend.js` - 複製按鈕 toast 改為「單號已複製！」
+- `YSShippingStatus.php` - 新增 6 個黑貓狀態碼對應
+
+---
 
 ### v1.1.0 (2026-01-12)
 - **新增**：手機號碼驗證（09 開頭、10 位數字）
