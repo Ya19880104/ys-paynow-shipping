@@ -59,79 +59,9 @@ if ( ! defined( 'ABSPATH' ) ) {
         <!-- JS 會自動填入 skeleton 或外掛卡片 -->
     </div>
 
-    <!-- 連線設定區 -->
-    <div class="ys-settings-section">
-        <h2 class="ys-settings-title">
-            <span class="dashicons dashicons-admin-settings"></span>
-            <?php echo esc_html__( '連線設定', 'ys-plugin-hub-client' ); ?>
-        </h2>
-
-        <div class="ys-settings-grid">
-            <!-- Hub 伺服器（readonly） -->
-            <div class="ys-setting-row">
-                <label for="ys-hub-url">
-                    <?php echo esc_html__( 'Hub 伺服器', 'ys-plugin-hub-client' ); ?>
-                </label>
-                <input type="url"
-                       id="ys-hub-url"
-                       value="<?php echo esc_attr( YS_HUB_CLIENT_HUB_URL ); ?>"
-                       readonly
-                />
-            </div>
-
-            <!-- Site Key -->
-            <div class="ys-setting-row">
-                <label for="ys-site-key">
-                    <?php echo esc_html__( 'Site Key', 'ys-plugin-hub-client' ); ?>
-                </label>
-                <div class="ys-setting-inline">
-                    <input type="text"
-                           id="ys-site-key"
-                           value="<?php echo esc_attr( $site_key ); ?>"
-                           placeholder="<?php echo esc_attr__( '輸入或自動產生', 'ys-plugin-hub-client' ); ?>"
-                    />
-                    <button type="button" id="ys-generate-key" class="ys-btn ys-btn-outline ys-btn-sm">
-                        <?php echo esc_html__( '自動產生', 'ys-plugin-hub-client' ); ?>
-                    </button>
-                </div>
-            </div>
-
-            <!-- 自動檢查更新 -->
-            <div class="ys-setting-row">
-                <label><?php echo esc_html__( '更新設定', 'ys-plugin-hub-client' ); ?></label>
-                <div class="ys-setting-checkbox">
-                    <input type="checkbox"
-                           id="ys-auto-check"
-                           <?php checked( $auto_check, 'yes' ); ?>
-                    />
-                    <label for="ys-auto-check">
-                        <?php echo esc_html__( '自動檢查更新', 'ys-plugin-hub-client' ); ?>
-                    </label>
-                </div>
-            </div>
-
-            <!-- 連線狀態 -->
-            <div class="ys-setting-row">
-                <label><?php echo esc_html__( '連線狀態', 'ys-plugin-hub-client' ); ?></label>
-                <div id="ys-connection-status"
-                     class="ys-connection-status ys-status-<?php echo esc_attr( $cb_state ); ?>">
-                    <span class="ys-status-dot"></span>
-                    <span class="ys-status-label"><?php echo esc_html( $cb_label ); ?></span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 操作按鈕 -->
-        <div class="ys-settings-actions">
-            <button type="button" id="ys-save-settings" class="ys-btn ys-btn-primary">
-                <span class="dashicons dashicons-yes-alt"></span>
-                <?php echo esc_html__( '儲存設定', 'ys-plugin-hub-client' ); ?>
-            </button>
-            <button type="button" id="ys-test-connection" class="ys-btn ys-btn-outline">
-                <span class="dashicons dashicons-admin-links"></span>
-                <?php echo esc_html__( '測試連線', 'ys-plugin-hub-client' ); ?>
-            </button>
-        </div>
-    </div>
+    <!-- 隱藏欄位（保留功能但不向用戶顯示任何設定） -->
+    <input type="hidden" id="ys-hub-url" value="<?php echo esc_attr( YS_HUB_CLIENT_HUB_URL ); ?>" />
+    <input type="hidden" id="ys-site-key" value="<?php echo esc_attr( $site_key ); ?>" />
+    <input type="hidden" id="ys-auto-check" value="yes" />
 
 </div>

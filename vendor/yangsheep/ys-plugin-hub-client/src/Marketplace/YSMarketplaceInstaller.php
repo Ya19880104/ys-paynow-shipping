@@ -112,6 +112,10 @@ final class YSMarketplaceInstaller {
         require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
         require_once ABSPATH . 'wp-admin/includes/plugin.php';
 
+        // 記錄更新前的啟用狀態
+        $was_active         = is_plugin_active( $plugin_file );
+        $was_network_active = is_plugin_active_for_network( $plugin_file );
+
         $skin     = new \WP_Ajax_Upgrader_Skin();
         $upgrader = new \Plugin_Upgrader( $skin );
 
@@ -130,13 +134,17 @@ final class YSMarketplaceInstaller {
 
         set_site_transient( 'update_plugins', $transient );
 
+        YSHubClientLogRepo::info( 'update', sprintf( '開始更新 %s → v%s（啟用: %s）', $slug, $version, $was_active ? 'yes' : 'no' ) );
+
         $result = $upgrader->upgrade( $plugin_file );
 
         if ( is_wp_error( $result ) ) {
+            YSHubClientLogRepo::error( 'update', sprintf( '更新 %s 失敗：%s', $slug, $result->get_error_message() ) );
             return $result;
         }
 
         if ( is_wp_error( $skin->result ) ) {
+            YSHubClientLogRepo::error( 'update', sprintf( '更新 %s 失敗：%s', $slug, $skin->result->get_error_message() ) );
             return $skin->result;
         }
 
@@ -146,6 +154,26 @@ final class YSMarketplaceInstaller {
                 __( '更新失敗', 'ys-plugin-hub-client' )
             );
         }
+
+        // 更新成功 → 重新啟用（如果原本是啟用狀態）
+        if ( $was_active ) {
+            $activate_result = activate_plugin( $plugin_file, '', $was_network_active, true );
+            if ( is_wp_error( $activate_result ) ) {
+                YSHubClientLogRepo::error( 'update', sprintf(
+                    '更新 %s 成功但重新啟用失敗：%s',
+                    $slug,
+                    $activate_result->get_error_message()
+                ) );
+                // 更新本身成功，回傳成功但附帶警告
+            } else {
+                YSHubClientLogRepo::success( 'update', sprintf( '外掛 %s 已更新至 v%s 並重新啟用', $slug, $version ) );
+            }
+        } else {
+            YSHubClientLogRepo::success( 'update', sprintf( '外掛 %s 已更新至 v%s（未啟用）', $slug, $version ) );
+        }
+
+        // 清除更新快取
+        delete_site_transient( 'ys_hub_update_data' );
 
         return true;
     }

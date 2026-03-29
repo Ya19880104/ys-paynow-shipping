@@ -100,10 +100,9 @@
                 Settings.save($(this));
             });
 
-            // 測試連線
-            $(document).on('click', '#ys-test-connection', function (e) {
-                e.preventDefault();
-                Settings.testConnection($(this));
+            // 自動檢查更新 checkbox 變更時自動儲存
+            $(document).on('change', '#ys-auto-check', function () {
+                Settings.save($('#ys-save-settings'));
             });
 
             // 產生 Site Key
