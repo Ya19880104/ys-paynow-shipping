@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"extends \\\\\\\\WC\" \"/g/dev/maindev/plugins-dev/ys-paynow-shipping\" --include=\"*.php\")",
+      "Bash(grep -r \"extends.*WC_Payment_Gateway\\\\|extends.*WC_Shipping_Method\\\\|class [A-Z][a-zA-Z0-9]*\\\\s*extends\\\\s*\\\\\\\\\" \"/g/dev/maindev/plugins-dev/ys-paynow-shipping\" --include=\"*.php \")",
+      "Bash(grep -r \"WCGatewayPaynowCOD\\\\|WC_\" /g/dev/maindev/plugins-dev --include=*.php --include=*.js)"
+    ]
+  }
+}

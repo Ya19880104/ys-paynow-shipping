@@ -14,7 +14,7 @@
     },
     "autoload": {
         "psr-4": {
-            "YangSheep\\PayNow\\Shipping\\": "src/"
+            "yangsheep\\paynow\\shipping\\": "src/"
         }
     }
 }

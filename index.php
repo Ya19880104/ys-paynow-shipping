@@ -2,7 +2,7 @@
 /**
  * 防止直接存取
  *
- * @package YangSheep\PayNow\Shipping
+ * @package yangsheep\paynow\shipping
  */
 
 // Silence is golden.

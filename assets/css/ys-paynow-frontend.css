@@ -33,16 +33,7 @@
 /* 外層包裝：確保在不同結帳頁佈局中正確顯示 */
 .ys-paynow-store-selector-wrapper {
     width: 100%;
-    margin-top: 15px;
-}
-
-/* 選擇器容器 */
-.ys-paynow-store-selector {
-    width: 100%;
-}
-
-.ys-paynow-cvs-selector {
-    margin: 10px 0;
+    margin: 15px 0 10px;
 }
 
 /* 選擇門市按鈕 */

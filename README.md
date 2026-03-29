@@ -4,11 +4,11 @@
 
 ## 版本資訊
 
-**當前版本**：1.2.0
-**最後更新**：2026-02-06
+**當前版本**：1.3.0
+**最後更新**：2026-03-12
 **開發者**：羊羊數位科技有限公司（YANGSHEEP DESIGN）
 **網站**：https://yangsheep.com.tw
-**命名空間**：`YangSheep\PayNow\Shipping`
+**命名空間**：`yangsheep\paynow\shipping`
 
 ---
 
@@ -63,22 +63,22 @@ ys-paynow-shipping/
 │       ├── ys-paynow-frontend.js        # 前台 JS（門市選擇、手機驗證）
 │       └── ys-paynow-admin.js           # 後台 JS
 ├── src/
-│   ├── Admin/
+│   ├── admin/
 │   │   ├── YSAdminPrint.php             # 標籤列印
 │   │   ├── YSOrderEdit.php              # 訂單編輯頁
 │   │   ├── YSOrderListTable.php         # 訂單列表頁
 │   │   └── YSOrderMetaBox.php           # 物流 Meta Box
-│   ├── Api/
+│   ├── api/
 │   │   ├── YSShippingRequest.php        # API 請求（建立託運單）
 │   │   └── YSShippingResponse.php       # API 回應（回傳處理）
-│   ├── Cron/
+│   ├── cron/
 │   │   └── YSStatusUpdater.php          # 排程更新物流狀態
-│   ├── Frontend/
+│   ├── frontend/
 │   │   ├── YSMyAccount.php              # 我的帳號頁面
 │   │   └── YSStoreSelector.php          # 門市選擇器
-│   ├── Gateways/
-│   │   └── WCGatewayPaynowCOD.php       # PayNow 超取付款閘道
-│   ├── Providers/
+│   ├── gateways/
+│   │   └── YSGatewayPaynowCOD.php       # PayNow 超取付款閘道
+│   ├── providers/
 │   │   ├── YSAbstractShipping.php       # 物流抽象類別
 │   │   ├── YSShipping711.php            # 7-11 交貨便
 │   │   ├── YSShipping711Bulk.php        # 7-11 大智通
@@ -92,19 +92,14 @@ ys-paynow-shipping/
 │   │   ├── YSShippingTcatChilled.php    # 黑貓冷藏
 │   │   ├── YSShippingTcatFrozen.php     # 黑貓冷凍
 │   │   └── YSShippingTcatNormal.php     # 黑貓常溫
-│   ├── Settings/
+│   ├── settings/
 │   │   └── YSSettingsTab.php            # WooCommerce 設定頁籤
-│   ├── Utils/
+│   ├── utils/
 │   │   ├── YSLogisticService.php        # 物流服務工具
 │   │   ├── YSOrderMeta.php              # 訂單 Meta 常數
 │   │   ├── YSOrderStatus.php            # 訂單狀態工具
 │   │   └── YSShippingStatus.php         # 物流狀態對應
 │   └── YSPaynowShipping.php             # 主要類別
-├── templates/
-│   └── checkout/
-│       └── store-selector.php           # 門市選擇器模板
-├── languages/
-│   └── ys-paynow-shipping.pot           # 翻譯模板
 ├── vendor/                              # Composer 依賴
 ├── README.md                            # 本檔案
 └── ys-paynow-shipping.php               # 主外掛檔案
@@ -134,18 +129,25 @@ ys-paynow-shipping/
 ## 訂單 Meta 欄位
 
 ```php
-// 檔案：src/Utils/YSOrderMeta.php
+// 檔案：src/utils/YSOrderMeta.php
 
-const LOGISTIC_SERVICE_ID = '_ys_logistic_service_id';  // 物流服務 ID
-const LOGISTIC_SERVICE    = '_ys_logistic_service';     // 物流服務名稱
-const LOGISTIC_NUMBER     = '_ys_logistic_number';      // 物流單號
-const TRACKING_NO         = '_ys_tracking_no';          // 追蹤號碼
-const STATUS              = '_ys_shipping_status';      // 物流狀態
-const STATUS_DESC         = '_ys_shipping_status_desc'; // 狀態描述
-const STATUS_TIME         = '_ys_shipping_status_time'; // 狀態時間
-const STORE_ID            = '_ys_store_id';             // 門市代號
-const STORE_NAME          = '_ys_store_name';           // 門市名稱
-const STORE_ADDRESS       = '_ys_store_address';        // 門市地址
+const StoreId            = '_ys_paynow_store_id';              // 門市代號
+const StoreName          = '_ys_paynow_store_name';            // 門市名稱
+const StoreAddr          = '_ys_paynow_store_addr';            // 門市地址
+const StoreTel           = '_ys_paynow_store_tel';             // 門市電話
+const STORE_DATA_JSON    = '_ys_paynow_store_data_json';       // 門市 JSON
+const LogisticServiceId  = '_ys_paynow_logistic_service_id';   // 物流服務 ID
+const LogisticService    = '_ys_paynow_logistic_service';      // 物流服務名稱
+const LogisticNumber     = '_ys_paynow_logistic_number';       // 物流單號
+const PaymentNo          = '_ys_paynow_payment_no';            // 託運單號
+const ValidationNo       = '_ys_paynow_validation_no';         // 驗證碼
+const Status             = '_ys_paynow_status';                // 訂單狀態
+const DeliveryStatus     = '_ys_paynow_delivery_status';       // 物流狀態描述
+const LogisticCode       = '_ys_paynow_logistic_code';         // 物流狀態碼
+const DetailStatusDesc   = '_ys_paynow_detail_status_desc';    // 狀態詳細描述
+const StatusUpdateAt     = '_ys_paynow_status_update_at';      // 最後更新時間
+const DeliveryType       = '_ys_paynow_delivery_type';         // 宅配溫層
+const DeliveryTime       = '_ys_paynow_delivery_time';         // 配送時段
 ```
 
 ---
@@ -280,6 +282,35 @@ WooCommerce > 設定 > 運送 > YS PayNow
 ---
 
 ## 版本紀錄
+
+### v1.3.0 (2026-03-12)
+
+#### 安全修正
+- **Webhook Token Fail-Close** — Token 未設定時自動產生並拒絕請求（HTTP 403），不再跳過驗證；使用 `hash_equals()` 防時序攻擊
+- **API 回應 Sanitize** — 取消物流單/更換超商失敗時，API 回應體寫入訂單備註前以 `wp_strip_all_tags()` 過濾，防止 Stored XSS
+- **前端通知安全** — 後台 JS 通知訊息統一使用 jQuery `.text()` 而非 `.html()`，防止 DOM XSS
+
+#### 重構
+- **命名空間全面小寫化** — `YangSheep\PayNow\Shipping` → `yangsheep\paynow\shipping`，確保 Linux 檔案系統相容性
+- **目錄名稱小寫化** — `src/` 下所有子目錄（Admin → admin、Api → api 等 8 個）統一為小寫
+- **Gateway 類別更名** — `WCGatewayPaynowCOD` → `YSGatewayPaynowCOD`，符合 YS 前綴命名規範
+- **PassCode 模式統一** — `build_pass_code()` 方法明確區分 `'new'`（建立）與 `'cancel'`（取消）模式
+- **Webhook URL 標準化** — 統一使用 `WC()->api_request_url()` 取代手動 `get_site_url()` 拼接
+- **移除未使用常數** — `YS_PAYNOW_SHIPPING_TEMPLATE_DIR`（已無 templates 目錄）
+- **CSS/JS 文件標籤更新** — `@package` 統一為小寫命名空間
+
+#### 改進
+- **列印狀態標記優化** — GET 方法（C2C 超商）改為確認 API 成功回傳有效 URL 後才標記已列印
+
+#### 清理
+- 移除空目錄：`languages/`、`templates/`
+- 更新跨外掛引用（yangsheep-checkout-optimizer 的 `class_exists` 檢查）
+
+#### 文件
+- 新增 `DEVELOPMENT.md` 完整開發文件（架構說明、類別文檔、資料流程、Hooks 參考）
+- 更新 `README.md` 檔案結構樹、Meta 欄位表與版本紀錄
+
+---
 
 ### v1.2.0 (2026-02-06)
 

@@ -4,25 +4,25 @@
  *
  * 負責初始化外掛、註冊 hooks、載入運送方式等核心功能。
  *
- * @package YangSheep\PayNow\Shipping
+ * @package yangsheep\paynow\shipping
  * @since   1.0.0
  */
 
-namespace YangSheep\PayNow\Shipping;
+namespace yangsheep\paynow\shipping;
 
-use YangSheep\PayNow\Shipping\Admin\YSAdminPrint;
-use YangSheep\PayNow\Shipping\Admin\YSOrderListTable;
-use YangSheep\PayNow\Shipping\Admin\YSOrderMetaBox;
-use YangSheep\PayNow\Shipping\Cron\YSStatusUpdater;
-use YangSheep\PayNow\Shipping\Frontend\YSMyAccount;
-use YangSheep\PayNow\Shipping\Gateways\WCGatewayPaynowCOD;
-use YangSheep\PayNow\Shipping\Api\YSShippingRequest;
-use YangSheep\PayNow\Shipping\Api\YSShippingResponse;
-use YangSheep\PayNow\Shipping\Frontend\YSStoreSelector;
-use YangSheep\PayNow\Shipping\Settings\YSSettingsTab;
-use YangSheep\PayNow\Shipping\Utils\YSLogisticService;
-use YangSheep\PayNow\Shipping\Utils\YSOrderMeta;
-use YangSheep\PayNow\Shipping\Utils\YSOrderStatus;
+use yangsheep\paynow\shipping\admin\YSAdminPrint;
+use yangsheep\paynow\shipping\admin\YSOrderListTable;
+use yangsheep\paynow\shipping\admin\YSOrderMetaBox;
+use yangsheep\paynow\shipping\cron\YSStatusUpdater;
+use yangsheep\paynow\shipping\frontend\YSMyAccount;
+use yangsheep\paynow\shipping\gateways\YSGatewayPaynowCOD;
+use yangsheep\paynow\shipping\api\YSShippingRequest;
+use yangsheep\paynow\shipping\api\YSShippingResponse;
+use yangsheep\paynow\shipping\frontend\YSStoreSelector;
+use yangsheep\paynow\shipping\settings\YSSettingsTab;
+use yangsheep\paynow\shipping\utils\YSLogisticService;
+use yangsheep\paynow\shipping\utils\YSOrderMeta;
+use yangsheep\paynow\shipping\utils\YSOrderStatus;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -103,8 +103,10 @@ class YSPaynowShipping {
 		// 註冊運送方式
 		add_filter( 'woocommerce_shipping_methods', array( __CLASS__, 'add_shipping_methods' ) );
 
-		// 註冊設定頁面
-		add_filter( 'woocommerce_get_settings_pages', array( __CLASS__, 'add_settings_page' ), 15 );
+		// 初始化設定頁面（電商工具箱選單）— 必須在 admin_menu 之前執行
+		if ( is_admin() ) {
+			self::init_settings_page();
+		}
 
 		// 結帳頁相關 hooks
 		// 注意：add_cvs_fields 已棄用，改由 JS 動態建立 hidden fields
@@ -113,9 +115,6 @@ class YSPaynowShipping {
 		// 超商選擇器由 YSStoreSelector::maybe_display_store_selector() 使用 woocommerce_after_shipping_rate hook 渲染
 		add_action( 'woocommerce_checkout_process', array( __CLASS__, 'validate_shipping_fields' ) );
 		add_action( 'woocommerce_checkout_create_order', array( __CLASS__, 'save_order_shipping_meta' ), 10, 2 );
-
-		// AJAX fragment 更新
-		add_filter( 'woocommerce_update_order_review_fragments', array( __CLASS__, 'update_cvs_info_fragment' ) );
 
 		// 根據運送方式調整必填欄位
 		add_filter( 'woocommerce_checkout_fields', array( __CLASS__, 'setup_cvs_shipping_fields_requirements' ), 999 );
@@ -200,48 +199,43 @@ class YSPaynowShipping {
 	 * @return array 加入 PayNow 運送方式後的陣列。
 	 */
 	public static function add_shipping_methods( $methods ) {
-		$methods['ys_paynow_shipping_711']         = 'YangSheep\PayNow\Shipping\Providers\YSShipping711';
-		$methods['ys_paynow_shipping_family']      = 'YangSheep\PayNow\Shipping\Providers\YSShippingFamily';
-		$methods['ys_paynow_shipping_hilife']      = 'YangSheep\PayNow\Shipping\Providers\YSShippingHilife';
+		$methods['ys_paynow_shipping_711']         = 'yangsheep\paynow\shipping\providers\YSShipping711';
+		$methods['ys_paynow_shipping_family']      = 'yangsheep\paynow\shipping\providers\YSShippingFamily';
+		$methods['ys_paynow_shipping_hilife']      = 'yangsheep\paynow\shipping\providers\YSShippingHilife';
 		
 		// 7-11 擴充
-		$methods['ys_paynow_shipping_711_frozen']      = 'YangSheep\PayNow\Shipping\Providers\YSShipping711Frozen';
-		$methods['ys_paynow_shipping_711_bulk']        = 'YangSheep\PayNow\Shipping\Providers\YSShipping711Bulk';
-		$methods['ys_paynow_shipping_711_bulk_frozen'] = 'YangSheep\PayNow\Shipping\Providers\YSShipping711BulkFrozen';
+		$methods['ys_paynow_shipping_711_frozen']      = 'yangsheep\paynow\shipping\providers\YSShipping711Frozen';
+		$methods['ys_paynow_shipping_711_bulk']        = 'yangsheep\paynow\shipping\providers\YSShipping711Bulk';
+		$methods['ys_paynow_shipping_711_bulk_frozen'] = 'yangsheep\paynow\shipping\providers\YSShipping711BulkFrozen';
 		
 		// 全家 擴充
-		$methods['ys_paynow_shipping_family_frozen']      = 'YangSheep\PayNow\Shipping\Providers\YSShippingFamilyFrozen';
-		$methods['ys_paynow_shipping_family_bulk']        = 'YangSheep\PayNow\Shipping\Providers\YSShippingFamilyBulk';
-		$methods['ys_paynow_shipping_family_bulk_frozen'] = 'YangSheep\PayNow\Shipping\Providers\YSShippingFamilyBulkFrozen';
+		$methods['ys_paynow_shipping_family_frozen']      = 'yangsheep\paynow\shipping\providers\YSShippingFamilyFrozen';
+		$methods['ys_paynow_shipping_family_bulk']        = 'yangsheep\paynow\shipping\providers\YSShippingFamilyBulk';
+		$methods['ys_paynow_shipping_family_bulk_frozen'] = 'yangsheep\paynow\shipping\providers\YSShippingFamilyBulkFrozen';
 
-		$methods['ys_paynow_shipping_tcat_normal'] = 'YangSheep\PayNow\Shipping\Providers\YSShippingTcatNormal';
+		$methods['ys_paynow_shipping_tcat_normal'] = 'yangsheep\paynow\shipping\providers\YSShippingTcatNormal';
 		
 		if ( 'yes' === get_option( 'ys_paynow_shipping_tcat_enable_cool', 'no' ) ) {
-			$methods['ys_paynow_shipping_tcat_chilled'] = 'YangSheep\PayNow\Shipping\Providers\YSShippingTcatChilled';
+			$methods['ys_paynow_shipping_tcat_chilled'] = 'yangsheep\paynow\shipping\providers\YSShippingTcatChilled';
 		}
 		
 		if ( 'yes' === get_option( 'ys_paynow_shipping_tcat_enable_frozen', 'no' ) ) {
-			$methods['ys_paynow_shipping_tcat_frozen']  = 'YangSheep\PayNow\Shipping\Providers\YSShippingTcatFrozen';
+			$methods['ys_paynow_shipping_tcat_frozen']  = 'yangsheep\paynow\shipping\providers\YSShippingTcatFrozen';
 		}
 		
 		return $methods;
 	}
 
 	/**
-	 * 註冊設定頁面
+	 * 初始化設定頁面
 	 *
-	 * @param array $settings 現有的設定頁面陣列。
-	 * @return array 加入 YS PayNow 設定頁後的陣列。
+	 * YSSettingsTab 已從 WC_Settings_Page 遷移至獨立設定頁面，
+	 * 透過 admin_menu hook 自行註冊「電商工具箱」子選單。
+	 *
+	 * @since 1.3.0
 	 */
-	public static function add_settings_page( $settings ) {
-		// 防禦性程式碼：確保 $settings 是陣列
-		if ( ! is_array( $settings ) ) {
-			// 如果不是陣列，將其包裝成陣列，以免發生 Fatal Error
-			$settings = array( $settings );
-		}
-		
-		$settings[] = new YSSettingsTab();
-		return $settings;
+	public static function init_settings_page() {
+		YSSettingsTab::get_instance();
 	}
 
 	/**
@@ -251,7 +245,7 @@ class YSPaynowShipping {
 	 * @return array 修改後的陣列。
 	 */
 	public static function add_payment_gateway( $gateways ) {
-		$gateways[] = 'YangSheep\PayNow\Shipping\Gateways\WCGatewayPaynowCOD';
+		$gateways[] = 'yangsheep\paynow\shipping\gateways\YSGatewayPaynowCOD';
 		return $gateways;
 	}
 
@@ -812,35 +806,6 @@ class YSPaynowShipping {
 
 	/*
 	|--------------------------------------------------------------------------
-	| AJAX Fragment 更新
-	|--------------------------------------------------------------------------
-	*/
-
-	/**
-	 * 更新結帳頁的超商資訊區塊
-	 *
-	 * @param array $fragments AJAX fragments 陣列。
-	 * @return array 更新後的 fragments。
-	 */
-	public static function update_cvs_info_fragment( $fragments ) {
-		$cvs_info = WC()->session->get( 'ys_paynow_cvs_info', array() );
-
-		ob_start();
-		?>
-		<div id="ys-paynow-cvs-selected-info">
-			<?php if ( ! empty( $cvs_info['store_name'] ) ) : ?>
-				<p><strong><?php esc_html_e( '取貨門市：', 'ys-paynow-shipping' ); ?></strong><?php echo esc_html( $cvs_info['store_name'] ); ?></p>
-				<p><strong><?php esc_html_e( '門市地址：', 'ys-paynow-shipping' ); ?></strong><?php echo esc_html( $cvs_info['store_addr'] ); ?></p>
-			<?php endif; ?>
-		</div>
-		<?php
-		$fragments['#ys-paynow-cvs-selected-info'] = ob_get_clean();
-
-		return $fragments;
-	}
-
-	/*
-	|--------------------------------------------------------------------------
 	| 地址格式化
 	|--------------------------------------------------------------------------
 	*/
@@ -1187,8 +1152,7 @@ class YSPaynowShipping {
 	 * @return void
 	 */
 	private static function output_dynamic_css_variables() {
-		// 預設顏色（與 YSSettingsTab 保持同步）
-		// 注意：不能直接呼叫 YSSettingsTab，因為前台可能尚未載入 WC_Settings_Page
+		// 預設顏色（與 YSSettingsTab::$default_colors 保持同步）
 		$default_store_bg     = '#e8eff5';
 		$default_store_border = '#c5d1d8';
 
@@ -1211,9 +1175,7 @@ class YSPaynowShipping {
 		$screen = get_current_screen();
 
 		if ( $screen
-			&& 'woocommerce_page_wc-settings' === $screen->id
-			&& isset( $_GET['tab'] )
-			&& 'ys_paynow_shipping' === $_GET['tab']
+			&& false !== strpos( $screen->id, 'ys-paynow-shipping' )
 		) {
 			$classes .= ' ys-paynow-settings-page';
 		}
@@ -1240,10 +1202,8 @@ class YSPaynowShipping {
 			'woocommerce_page_wc-orders',    // HPOS 訂單頁面
 		);
 
-		// WooCommerce 設定頁面（PayNow 物流分頁）
-		$is_paynow_settings = 'woocommerce_page_wc-settings' === $screen->id
-			&& isset( $_GET['tab'] )
-			&& 'ys_paynow_shipping' === $_GET['tab'];
+		// PayNow 物流設定頁面（電商工具箱子選單）
+		$is_paynow_settings = false !== strpos( $screen->id, 'ys-paynow-shipping' );
 
 		// 判斷是否需要載入
 		$is_order_screen = in_array( $screen->id, $order_screens, true );

@@ -6,13 +6,13 @@
  *
  * @link              https://yangsheep.com.tw
  * @since             1.0.0
- * @package           YangSheep\PayNow\Shipping
+ * @package           yangsheep\paynow\shipping
  *
  * @wordpress-plugin
  * Plugin Name:       YS PAYNOW VIA WOOCOMMERCE
  * Plugin URI:        https://yangsheep.com.tw/plugins/ys-paynow-shipping
  * Description:       整合 PayNow 物流服務至 WooCommerce，支援 7-11、全家、萊爾富超商取貨與黑貓宅配。
- * Version:           1.1.0
+ * Version:           1.4.0
  * Author:            YANGSHEEP DESIGN
  * Author URI:        https://yangsheep.com.tw
  * License:           GPL-2.0+
@@ -24,7 +24,7 @@
  * Requires PHP:      7.4
  */
 
-namespace YangSheep\PayNow\Shipping;
+namespace yangsheep\paynow\shipping;
 
 // 防止直接存取
 if ( ! defined( 'WPINC' ) ) {
@@ -37,47 +37,41 @@ if ( ! defined( 'WPINC' ) ) {
 |--------------------------------------------------------------------------
 | 定義外掛所需的常數，方便在各處使用。
 */
-define( 'YS_PAYNOW_SHIPPING_VERSION', '1.1.0' );
+define( 'YS_PAYNOW_SHIPPING_VERSION', '1.4.0' );
 define( 'YS_PAYNOW_SHIPPING_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'YS_PAYNOW_SHIPPING_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'YS_PAYNOW_SHIPPING_BASENAME', plugin_basename( __FILE__ ) );
-define( 'YS_PAYNOW_SHIPPING_TEMPLATE_DIR', plugin_dir_path( __FILE__ ) . 'templates/' );
 
 /*
 |--------------------------------------------------------------------------
-| 自動載入器
+| Composer autoloader（載入 hub-client 等 vendor 套件）
 |--------------------------------------------------------------------------
-| 載入 Composer 自動載入器，若不存在則顯示錯誤提示。
 */
 if ( file_exists( YS_PAYNOW_SHIPPING_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
 	require_once YS_PAYNOW_SHIPPING_PLUGIN_DIR . 'vendor/autoload.php';
-} else {
-	// 若無 Composer autoloader，使用簡易的類別載入
-	spl_autoload_register( function ( $class ) {
-		// 命名空間前綴
-		$prefix = 'YangSheep\\PayNow\\Shipping\\';
-
-		// 基礎目錄
-		$base_dir = YS_PAYNOW_SHIPPING_PLUGIN_DIR . 'src/';
-
-		// 檢查類別是否使用此命名空間前綴
-		$len = strlen( $prefix );
-		if ( strncmp( $prefix, $class, $len ) !== 0 ) {
-			return;
-		}
-
-		// 取得相對類別名稱
-		$relative_class = substr( $class, $len );
-
-		// 將命名空間分隔符號轉換為目錄分隔符號，並加上 .php
-		$file = $base_dir . str_replace( '\\', '/', $relative_class ) . '.php';
-
-		// 若檔案存在則載入
-		if ( file_exists( $file ) ) {
-			require $file;
-		}
-	});
 }
+
+/*
+|--------------------------------------------------------------------------
+| PSR-4 Fallback Autoloader（永遠註冊，確保自身 namespace 可載入）
+|--------------------------------------------------------------------------
+*/
+spl_autoload_register( function ( $class ) {
+	$prefix   = 'yangsheep\\paynow\\shipping\\';
+	$base_dir = YS_PAYNOW_SHIPPING_PLUGIN_DIR . 'src/';
+	$len      = strlen( $prefix );
+
+	if ( strncmp( $prefix, $class, $len ) !== 0 ) {
+		return;
+	}
+
+	$relative_class = substr( $class, $len );
+	$file           = $base_dir . str_replace( '\\', '/', $relative_class ) . '.php';
+
+	if ( file_exists( $file ) ) {
+		require $file;
+	}
+} );
 
 /*
 |--------------------------------------------------------------------------
@@ -102,6 +96,22 @@ function ys_paynow_shipping_needs_woocommerce() {
 	echo '  <p>' . esc_html__( 'PayNow Shipping 需要 WooCommerce 才能運作，請先安裝並啟用 WooCommerce！', 'ys-paynow-shipping' ) . '</p>';
 	echo '</div>';
 }
+
+/*
+|--------------------------------------------------------------------------
+| YS Plugin Hub Client 註冊
+|--------------------------------------------------------------------------
+*/
+add_action( 'plugins_loaded', function () {
+	if ( class_exists( '\YangSheep\PluginHubClient\YSPluginHubClient' ) ) {
+		\YangSheep\PluginHubClient\YSPluginHubClient::register( array(
+			'slug'        => 'ys-paynow-shipping',
+			'version'     => YS_PAYNOW_SHIPPING_VERSION,
+			'plugin_file' => __FILE__,
+			'name'        => 'YS PAYNOW VIA WOOCOMMERCE',
+		) );
+	}
+}, 5 );
 
 /*
 |--------------------------------------------------------------------------
@@ -143,7 +153,7 @@ add_action( 'plugins_loaded', __NAMESPACE__ . '\\run_ys_paynow_shipping' );
 | 在外掛列表頁面添加「設定」連結。
 */
 add_filter( 'plugin_action_links_' . YS_PAYNOW_SHIPPING_BASENAME, function( $links ) {
-	$settings_link = '<a href="' . admin_url( 'admin.php?page=wc-settings&tab=ys_paynow_shipping' ) . '">' . __( '設定', 'ys-paynow-shipping' ) . '</a>';
+	$settings_link = '<a href="' . admin_url( 'admin.php?page=ys-paynow-shipping' ) . '">' . __( '設定', 'ys-paynow-shipping' ) . '</a>';
 	array_unshift( $links, $settings_link );
 	return $links;
 } );

@@ -3,7 +3,7 @@
  *
  * 後台訂單管理功能。
  *
- * @package YangSheep\PayNow\Shipping
+ * @package yangsheep\paynow\shipping
  * @since   1.0.0
  */
 
@@ -366,6 +366,10 @@
             var self = this;
 
             window.addEventListener('message', function (event) {
+                // 驗證來源：只接受同站的 postMessage
+                if (event.origin !== window.location.origin) {
+                    return;
+                }
                 if (event.data && event.data.action === 'ys_paynow_cvs_selected') {
                     self.handleAdminCVSSelected(event.data.data);
                 }
@@ -416,7 +420,8 @@
         showNotice: function (type, message) {
             var noticeClass = type === 'success' ? 'notice-success' : 'notice-error';
 
-            var $notice = $('<div class="notice ' + noticeClass + ' is-dismissible"><p>' + message + '</p></div>');
+            var $notice = $('<div class="notice ' + noticeClass + ' is-dismissible"></div>');
+            $notice.append($('<p></p>').text(message));
 
             $('.wrap h1').first().after($notice);
 

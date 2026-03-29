@@ -291,7 +291,7 @@
 
             // 使用 CSS class 控制顯示（配合 AJAX fragment 更新）
             $container.removeClass('ys-paynow-hidden').show();
-            $('.ys-paynow-cvs-selector').removeClass('ys-paynow-hidden').show();
+            $('.ys-paynow-store-selector').removeClass('ys-paynow-hidden').show();
 
             // 檢查 PHP 是否已經渲染了「未選擇門市」的狀態
             const $noStore = $container.find('.ys-paynow-no-store');
@@ -326,7 +326,7 @@
         hideStoreSelector: function () {
             // 隱藏所有 YS PayNow 選擇器（使用 CSS class 配合 AJAX fragment）
             $('#ys-paynow-store-selector-container').addClass('ys-paynow-hidden').hide();
-            $('.ys-paynow-cvs-selector').addClass('ys-paynow-hidden').hide();
+            $('.ys-paynow-store-selector').addClass('ys-paynow-hidden').hide();
             $('.ys-paynow-store-selector-row, .ys-paynow-store-selector-wrapper').addClass('ys-paynow-hidden').hide();
         },
 
@@ -387,7 +387,7 @@
             const methodId = shippingMethod ? shippingMethod.split(':')[0] : '';
 
             // Get logistic service from the button's container
-            const $selector = $btn.closest('.ys-paynow-cvs-selector');
+            const $selector = $btn.closest('.ys-paynow-store-selector');
             let logisticService = $selector.data('logistic-service');
 
             // Fallback: Use service mapping if DOM data is missing
@@ -1222,109 +1222,6 @@
             setTimeout(function () {
                 $toast.removeClass('show');
             }, 2000);
-        }
-    };
-
-    /**
-     * YS PayNow Order List Expander
-     * 訂單列表物流詳情展開功能
-     */
-    var YSOrderListExpander = {
-        init: function () {
-            $(document).on('click', '.ys-expand-toggle', this.handleToggle);
-            $(document).on('click', '.ys-panel-refresh', this.handlePanelRefresh);
-        },
-
-        handleToggle: function (e) {
-            e.preventDefault();
-            var $btn = $(this);
-            var orderId = $btn.data('order-id');
-            var $row = $btn.closest('tr');
-            var $existingPanel = $row.next('.ys-expanded-row');
-
-            // 如果已展開，則收合
-            if ($btn.hasClass('expanded')) {
-                $btn.removeClass('expanded');
-                $existingPanel.slideUp(200, function () {
-                    $(this).remove();
-                });
-                return;
-            }
-
-            // 標記為展開
-            $btn.addClass('expanded');
-
-            // 建立擴展列
-            var colSpan = $row.find('td').length;
-            var $expandedRow = $('<tr class="ys-expanded-row"><td colspan="' + colSpan + '"><div class="ys-order-expanded-panel"><div class="ys-panel-loading">載入中...</div></div></td></tr>');
-            $row.after($expandedRow);
-            $expandedRow.hide().slideDown(200);
-
-            // AJAX 載入詳情
-            YSOrderListExpander.loadDetails(orderId, $expandedRow.find('.ys-order-expanded-panel'));
-        },
-
-        loadDetails: function (orderId, $panel) {
-            $.ajax({
-                url: ys_paynow_params.ajax_url,
-                type: 'POST',
-                data: {
-                    action: 'ys_paynow_get_order_logistics_detail',
-                    nonce: ys_paynow_params.nonce,
-                    order_id: orderId
-                },
-                success: function (response) {
-                    if (response.success) {
-                        var d = response.data;
-                        var stepHtml = YSOrderListExpander.buildProgressSteps(d.current_step);
-
-                        var html = '<div class="ys-panel-header">' +
-                            '<h4 class="ys-panel-title">' + d.service_name + '</h4>' +
-                            '<button type="button" class="ys-panel-refresh" data-order-id="' + orderId + '">🔄 更新貨態</button>' +
-                            '</div>' +
-                            '<div class="ys-status-display">' +
-                            '<div class="ys-status-text">' + d.status_text + '</div>' +
-                            '<div class="ys-status-time">' + d.update_time + '</div>' +
-                            '</div>' +
-                            stepHtml +
-                            '<div class="ys-panel-details">' +
-                            '<div class="detail-item"><div class="detail-label">取貨門市</div><div class="detail-value">' + (d.store_name || '-') + '</div></div>' +
-                            '<div class="detail-item"><div class="detail-label">物流單號</div><div class="detail-value">' + (d.logistic_number || '-') + '</div></div>' +
-                            '</div>';
-
-                        $panel.html(html);
-                    } else {
-                        $panel.html('<div class="ys-panel-error">無法載入物流資訊</div>');
-                    }
-                },
-                error: function () {
-                    $panel.html('<div class="ys-panel-error">連線失敗，請稍後再試</div>');
-                }
-            });
-        },
-
-        buildProgressSteps: function (currentStep) {
-            var steps = ['待寄件', '運送中', '已到店', '已取貨'];
-            var html = '<div class="ys-mini-progress">';
-            for (var i = 0; i < steps.length; i++) {
-                var activeClass = (i < currentStep) ? ' active' : '';
-                html += '<div class="ys-mini-step' + activeClass + '">' +
-                    '<div class="step-dot"></div>' +
-                    '<div class="step-label">' + steps[i] + '</div>' +
-                    '</div>';
-            }
-            html += '</div>';
-            return html;
-        },
-
-        handlePanelRefresh: function (e) {
-            e.preventDefault();
-            var $btn = $(this);
-            var orderId = $btn.data('order-id');
-            var $panel = $btn.closest('.ys-order-expanded-panel');
-
-            $panel.html('<div class="ys-panel-loading">更新中...</div>');
-            YSOrderListExpander.loadDetails(orderId, $panel);
         }
     };
 
