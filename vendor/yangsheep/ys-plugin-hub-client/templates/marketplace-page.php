@@ -25,6 +25,10 @@ if ( ! defined( 'ABSPATH' ) ) {
             <?php echo esc_html__( 'YS 外掛市集', 'ys-plugin-hub-client' ); ?>
         </h1>
         <div class="ys-marketplace-actions">
+            <span id="ys-hub-status" class="ys-hub-status ys-hub-status-checking" title="<?php echo esc_attr__( '檢查連線中...', 'ys-plugin-hub-client' ); ?>">
+                <span class="ys-hub-status-dot"></span>
+                <span class="ys-hub-status-text"><?php echo esc_html__( '連線中...', 'ys-plugin-hub-client' ); ?></span>
+            </span>
             <button type="button" id="ys-refresh-btn" class="ys-btn ys-btn-outline">
                 <span class="dashicons dashicons-update"></span>
                 <?php echo esc_html__( '檢查更新', 'ys-plugin-hub-client' ); ?>

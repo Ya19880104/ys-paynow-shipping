@@ -71,7 +71,66 @@
 .ys-marketplace-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
+}
+
+/* Hub 連線狀態燈號 */
+.ys-hub-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--ys-adm-text-muted);
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--ys-adm-bg);
+    border: 1px solid var(--ys-adm-border-light);
+    cursor: default;
+    transition: all 0.3s ease;
+}
+.ys-hub-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    transition: background 0.3s ease;
+}
+/* 檢查中 */
+.ys-hub-status-checking .ys-hub-status-dot {
+    background: var(--ys-adm-warning);
+    animation: ys-pulse 1.2s ease-in-out infinite;
+}
+/* 正常 */
+.ys-hub-status-ok .ys-hub-status-dot {
+    background: var(--ys-adm-success);
+    box-shadow: 0 0 4px var(--ys-adm-success);
+}
+.ys-hub-status-ok {
+    color: var(--ys-adm-success);
+    border-color: rgba(125, 171, 142, 0.3);
+}
+/* 異常 */
+.ys-hub-status-error .ys-hub-status-dot {
+    background: var(--ys-adm-danger);
+    box-shadow: 0 0 4px var(--ys-adm-danger);
+}
+.ys-hub-status-error {
+    color: var(--ys-adm-danger);
+    border-color: rgba(192, 128, 128, 0.3);
+    cursor: pointer;
+}
+/* 熔斷 */
+.ys-hub-status-breaker .ys-hub-status-dot {
+    background: var(--ys-adm-warning);
+    box-shadow: 0 0 4px var(--ys-adm-warning);
+}
+.ys-hub-status-breaker {
+    color: var(--ys-adm-warning);
+    border-color: rgba(196, 166, 122, 0.3);
+}
+@keyframes ys-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
 }
 
 /* ============================================
@@ -421,6 +480,43 @@
     font-size: 16px;
     width: 16px;
     height: 16px;
+}
+
+/* ============================================
+   價格徽章
+   ============================================ */
+.ys-price-badge-free {
+    display: inline-flex;
+    align-items: center;
+    background: var(--ys-adm-success-bg);
+    color: var(--ys-adm-success);
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.ys-price-badge-paid {
+    display: inline-flex;
+    align-items: center;
+    background: var(--ys-adm-warning-bg);
+    color: var(--ys-adm-warning);
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+/* 查看外掛按鈕（付費） */
+.ys-btn-external {
+    background: var(--ys-adm-warning);
+    color: #fff;
+    border: none;
+}
+
+.ys-btn-external:hover:not(:disabled) {
+    background: #b3955a;
+    color: #fff;
 }
 
 /* ============================================

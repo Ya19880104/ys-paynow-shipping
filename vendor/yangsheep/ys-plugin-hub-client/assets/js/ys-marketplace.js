@@ -133,6 +133,7 @@
             var self = this;
 
             self.showSkeleton();
+            self.setHubStatus('checking', i18n.connecting || '連線中...');
 
             $.ajax({
                 url: config.ajaxUrl,
@@ -143,6 +144,9 @@
                 },
                 success: function (response) {
                     if (response.success && response.data) {
+                        // 連線成功
+                        self.setHubStatus('ok', i18n.connected || '已連線');
+
                         // 處理兩種格式：直接陣列或 {plugins: [...]} 物件
                         var plugins = response.data.plugins || [];
                         if (plugins.plugins && Array.isArray(plugins.plugins)) {
@@ -169,16 +173,79 @@
 
                         self.renderPlugins();
                     } else {
+                        // API 回傳錯誤
                         var msg = (response.data && response.data.message)
                             ? response.data.message
                             : i18n.connectionFail;
+                        var code = (response.data && response.data.code) || '';
+
+                        self.setHubStatus('error', i18n.disconnected || '連線異常');
+                        self.showConnectionError(msg, code);
                         self.showError(msg);
                     }
                 },
-                error: function () {
-                    self.showError(i18n.connectionFail);
+                error: function (xhr) {
+                    var reason = '';
+                    if (xhr.status === 0) {
+                        reason = i18n.networkError || 'Hub 伺服器無法連線（網路逾時或伺服器關閉）';
+                    } else if (xhr.status >= 500) {
+                        reason = (i18n.serverError || 'Hub 伺服器錯誤') + ' (HTTP ' + xhr.status + ')';
+                    } else if (xhr.status === 403) {
+                        reason = i18n.blocked || '此站台已被封鎖';
+                    } else {
+                        reason = (i18n.connectionFail || '連線失敗') + ' (HTTP ' + xhr.status + ')';
+                    }
+
+                    self.setHubStatus('error', i18n.disconnected || '連線異常');
+                    self.showConnectionError(reason, 'http_' + xhr.status);
+                    self.showError(reason);
                 }
             });
+        },
+
+        /**
+         * 設定 Hub 連線狀態燈號
+         *
+         * @param {string} status  'checking' | 'ok' | 'error' | 'breaker'
+         * @param {string} text    狀態文字
+         */
+        setHubStatus: function (status, text) {
+            var $el = $('#ys-hub-status');
+            $el.removeClass('ys-hub-status-checking ys-hub-status-ok ys-hub-status-error ys-hub-status-breaker')
+               .addClass('ys-hub-status-' + status);
+            $el.find('.ys-hub-status-text').text(text);
+            $el.attr('title', text);
+        },
+
+        /**
+         * 顯示連線錯誤為公告
+         *
+         * @param {string} message 錯誤訊息
+         * @param {string} code    錯誤代碼
+         */
+        showConnectionError: function (message, code) {
+            var $wrap = $('#ys-announcements');
+            var errorId = 'ys-conn-error';
+
+            // 移除舊的連線錯誤公告
+            $('#' + errorId).remove();
+
+            var html = '<div id="' + errorId + '" class="ys-announcement ys-announcement-warning">' +
+                '<div class="ys-announcement-content">' +
+                '<strong><span class="dashicons dashicons-warning"></span> ' +
+                this.escHtml(i18n.hubConnectionIssue || 'Hub 連線異常') + '</strong>' +
+                '<p>' + this.escHtml(message) + '</p>';
+
+            // 如果是熔斷，說明自動恢復時間
+            if (code === 'circuit_breaker') {
+                html += '<p style="font-size:12px;opacity:0.8;">' +
+                    this.escHtml(i18n.circuitBreakerNote || '系統將在 30 分鐘後自動重新嘗試連線。') +
+                    '</p>';
+            }
+
+            html += '</div></div>';
+
+            $wrap.prepend(html).show();
         },
 
         /**
@@ -247,14 +314,36 @@
             var icon = plugin.icon || 'dashicons-admin-plugins';
             var status = plugin.status || plugin.local_status || 'not_installed';
             var localVersion = plugin.local_version || '';
+            var priceType = plugin.price_type || 'free';
+            var priceAmount = plugin.price_amount || '';
+            var externalUrl = plugin.external_url || '';
+
+            // 價格徽章
+            var priceBadgeHtml = '';
+            if (priceType === 'paid') {
+                priceBadgeHtml = '<span class="ys-price-badge-paid">' +
+                    this.escHtml(priceAmount || '付費') + '</span>';
+            } else {
+                priceBadgeHtml = '<span class="ys-price-badge-free">' +
+                    this.escHtml(i18n.free || '免費') + '</span>';
+            }
 
             // 狀態徽章 + 操作按鈕
             var badgeHtml = '';
             var actionHtml = '';
 
-            if (status === 'active') {
+            // 付費外掛不顯示安裝/更新按鈕，改顯示「查看外掛」
+            if (priceType === 'paid') {
+                badgeHtml = priceBadgeHtml;
+                if (externalUrl) {
+                    actionHtml = '<button type="button" class="ys-btn ys-btn-external ys-btn-sm" ' +
+                        'onclick="window.open(\'' + this.escAttr(externalUrl) + '\', \'_blank\')">' +
+                        '<span class="dashicons dashicons-external" style="font-size:14px;width:14px;height:14px;"></span> ' +
+                        this.escHtml(i18n.viewPlugin || '查看外掛') + '</button>';
+                }
+            } else if (status === 'active') {
                 // 已啟用
-                badgeHtml = '<span class="ys-badge ys-badge-active">' + (i18n.active || '已啟用') + '</span>';
+                badgeHtml = priceBadgeHtml;
                 // 已啟用且有更新
                 if (plugin.update_available) {
                     actionHtml = '<button type="button" class="ys-btn ys-btn-primary ys-btn-sm ys-update-btn" ' +
@@ -263,19 +352,19 @@
                 }
             } else if (status === 'installed' && plugin.update_available) {
                 // 已安裝但有更新
-                badgeHtml = '<span class="ys-badge ys-badge-update">' + (i18n.updateAvail || '可更新') + '</span>';
+                badgeHtml = priceBadgeHtml;
                 actionHtml = '<button type="button" class="ys-btn ys-btn-primary ys-btn-sm ys-update-btn" ' +
                     'data-slug="' + slug + '" data-version="' + version + '">' +
                     this.escHtml(i18n.update || '更新') + '</button>';
             } else if (status === 'installed') {
                 // 已安裝未啟用
-                badgeHtml = '<span class="ys-badge ys-badge-installed">' + (i18n.installed || '已安裝') + '</span>';
+                badgeHtml = priceBadgeHtml;
                 actionHtml = '<button type="button" class="ys-btn ys-btn-success ys-btn-sm ys-activate-btn" ' +
                     'data-slug="' + slug + '">' +
                     (i18n.activate || '啟用') + '</button>';
             } else {
                 // 未安裝
-                badgeHtml = '<span class="ys-badge ys-badge-not-installed">' + (i18n.install || '安裝') + '</span>';
+                badgeHtml = priceBadgeHtml;
                 actionHtml = '<button type="button" class="ys-btn ys-btn-outline ys-btn-sm ys-install-btn" ' +
                     'data-slug="' + slug + '" data-version="' + version + '">' +
                     this.escHtml(i18n.install || '安裝') + '</button>';
