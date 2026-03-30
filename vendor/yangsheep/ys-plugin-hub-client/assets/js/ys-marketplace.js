@@ -353,12 +353,12 @@
                         this.escHtml(i18n.update || '更新') + ' v' + version + '</button>';
                 }
             } else if (status === 'installed' && plugin.update_available) {
-                // 已安裝但有更新
+                // 已安裝但有更新（未啟用）
                 badgeHtml = priceBadgeHtml +
                     '<span class="ys-badge ys-badge-installed">' + this.escHtml(i18n.installed || '已安裝') + '</span>';
                 actionHtml = '<button type="button" class="ys-btn ys-btn-primary ys-btn-sm ys-update-btn" ' +
                     'data-slug="' + slug + '" data-version="' + version + '">' +
-                    this.escHtml(i18n.update || '更新') + '</button>';
+                    this.escHtml(i18n.update || '更新') + ' v' + version + '</button>';
             } else if (status === 'installed') {
                 // 已安裝未啟用
                 badgeHtml = priceBadgeHtml +
@@ -452,12 +452,18 @@
                 success: function (response) {
                     if (response.success) {
                         Toast.show(response.data.message || i18n.success, 'success');
-                        // 更新成功 → 按鈕變為「已是最新」
                         var $card = btn.closest('.ys-plugin-card');
-                        $card.find('.ys-badge').replaceWith(
-                            '<span class="ys-badge ys-badge-installed">' + (i18n.installed || '已安裝') + '</span>'
-                        );
+
+                        // 更新版本號顯示
                         $card.find('.ys-plugin-version').text('v' + version);
+
+                        // 更新 badge — 已啟用（installer 會自動重啟用）
+                        $card.find('.ys-card-footer-left').html(
+                            '<span class="ys-price-badge-free">' + (i18n.free || '免費') + '</span>' +
+                            '<span class="ys-badge ys-badge-active">' + (i18n.active || '已啟用') + '</span>'
+                        );
+
+                        // 移除更新按鈕
                         btn.remove();
                     } else {
                         Toast.show(response.data.message || i18n.failed, 'error');

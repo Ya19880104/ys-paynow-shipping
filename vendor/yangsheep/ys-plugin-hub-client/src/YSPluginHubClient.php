@@ -74,6 +74,9 @@ final class YSPluginHubClient {
 
         // WP admin footer 加入 YANGSHEEP CLOUD
         add_filter( 'admin_footer_text', array( $this, 'admin_footer_text' ) );
+
+        // 聯絡我們外部連結 target="_blank"
+        add_action( 'admin_footer', array( $this, 'contact_link_script' ) );
     }
 
     /**
@@ -182,10 +185,25 @@ final class YSPluginHubClient {
         $ys_credit = sprintf(
             /* translators: %s: YANGSHEEP CLOUD link */
             __( '由 %s 開發與維護', 'ys-plugin-hub-client' ),
-            '<a href="https://yangsheep.com.tw" target="_blank" rel="noopener noreferrer">YANGSHEEP CLOUD</a>'
+            '<a href="https://yangsheep.com.tw" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">YANGSHEEP CLOUD</a>'
         );
 
         return $text . ' | ' . $ys_credit;
+    }
+
+    /**
+     * 聯絡我們連結新開視窗
+     *
+     * @return void
+     */
+    public function contact_link_script(): void {
+        ?>
+        <script>
+        jQuery(function($){
+            $('#adminmenu a[href*="yangsheep.com.tw/contact"]').attr('target', '_blank').attr('rel', 'noopener noreferrer');
+        });
+        </script>
+        <?php
     }
 
     /**

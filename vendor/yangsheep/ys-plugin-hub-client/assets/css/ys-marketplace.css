@@ -930,7 +930,8 @@
     box-shadow: 0 4px 20px rgba(107, 138, 154, 0.25);
 }
 
-.ys-page-hero h1 {
+.ys-page-hero h1,
+.ys-hero-title {
     margin: 0 0 4px;
     font-size: 22px;
     font-weight: 700;
@@ -940,13 +941,15 @@
     gap: 8px;
 }
 
-.ys-page-hero h1 .dashicons {
+.ys-page-hero h1 .dashicons,
+.ys-hero-title .dashicons {
     font-size: 24px;
     width: 24px;
     height: 24px;
 }
 
-.ys-page-hero p {
+.ys-page-hero p,
+.ys-hero-subtitle {
     margin: 0;
     font-size: 13px;
     color: rgba(255, 255, 255, 0.85);
@@ -959,21 +962,72 @@
     flex-shrink: 0;
 }
 
-/* Hero 內的連線狀態 */
+/* Hero 內的連線狀態膠囊 */
 .ys-page-hero .ys-hub-status {
-    color: rgba(255, 255, 255, 0.9);
+    padding: 6px 16px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
 }
 
-.ys-page-hero .ys-hub-status-dot {
-    background: #b8e6c8;
-    box-shadow: 0 0 6px rgba(184, 230, 200, 0.6);
+/* 已連線：淺綠底 + 深綠點 + 深綠字 */
+.ys-page-hero .ys-hub-status-connected {
+    background: rgba(200, 235, 210, 0.85);
+}
+.ys-page-hero .ys-hub-status-connected .ys-hub-status-text {
+    color: #2d6a3f;
+}
+.ys-page-hero .ys-hub-status-connected .ys-hub-status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #2d8a4e;
+    box-shadow: 0 0 8px rgba(45, 138, 78, 0.6);
 }
 
-/* Hero 內的按鈕 */
-.ys-btn-hero {
-    background: rgba(255, 255, 255, 0.2);
+/* 斷線：淺紅底 + 深紅點 + 深紅字 */
+.ys-page-hero .ys-hub-status-error {
+    background: rgba(240, 200, 200, 0.85);
+}
+.ys-page-hero .ys-hub-status-error .ys-hub-status-text {
+    color: #8a2d2d;
+}
+.ys-page-hero .ys-hub-status-error .ys-hub-status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #c03030;
+    box-shadow: 0 0 8px rgba(192, 48, 48, 0.6);
+}
+
+/* 檢查中：白色半透明 */
+.ys-page-hero .ys-hub-status-checking {
+    background: rgba(255, 255, 255, 0.25);
+}
+.ys-page-hero .ys-hub-status-checking .ys-hub-status-text {
     color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.4);
+}
+.ys-page-hero .ys-hub-status-checking .ys-hub-status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.6);
+    animation: ys-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes ys-pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+
+/* Hero 內的按鈕 — 白底深藍字 */
+.ys-btn-hero {
+    background: rgba(255, 255, 255, 0.9);
+    color: #2c4a5e;
+    border: 1px solid rgba(255, 255, 255, 0.95);
     padding: 8px 16px;
     border-radius: 6px;
     font-size: 13px;
@@ -985,8 +1039,9 @@
 }
 
 .ys-btn-hero:hover {
-    background: rgba(255, 255, 255, 0.35);
-    color: #fff;
+    background: #fff;
+    color: #1a3548;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .ys-btn-hero .dashicons {
@@ -1075,4 +1130,9 @@
     font-size: 11px;
     font-weight: 600;
     white-space: nowrap;
+}
+
+/* 防止 WP #wpfooter 重疊底部內容 */
+.ys-marketplace-wrap {
+    padding-bottom: 40px;
 }

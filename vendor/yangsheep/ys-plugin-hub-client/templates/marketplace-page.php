@@ -16,17 +16,22 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 ?>
-<div class="wrap">
 <div class="ys-marketplace-wrap">
 
-    <!-- 色塊 Header -->
+    <!-- 色塊 Header（放在 .wrap 之前，避免 WP notice 插入） -->
     <div class="ys-page-hero">
         <div class="ys-page-hero-content">
-            <h1>
+            <div class="ys-hero-title">
                 <span class="dashicons dashicons-store"></span>
                 <?php echo esc_html__( 'YS 外掛市集', 'ys-plugin-hub-client' ); ?>
-            </h1>
-            <p><?php echo esc_html__( 'YANGSHEEP DESIGN 電商工具箱 — 瀏覽、安裝、管理所有 YS 外掛', 'ys-plugin-hub-client' ); ?></p>
+            </div>
+            <div class="ys-hero-subtitle"><?php
+                /* translators: %s: YANGSHEEP CLOUD link */
+                printf(
+                    esc_html__( '由 %s 開發與維護', 'ys-plugin-hub-client' ),
+                    '<a href="https://yangsheep.com.tw" target="_blank" rel="noopener noreferrer" style="color:rgba(255,255,255,0.95);text-decoration:none;">YANGSHEEP CLOUD</a>'
+                );
+            ?></div>
         </div>
         <div class="ys-page-hero-actions">
             <span id="ys-hub-status" class="ys-hub-status ys-hub-status-checking" title="<?php echo esc_attr__( '檢查連線中...', 'ys-plugin-hub-client' ); ?>">
@@ -39,6 +44,9 @@ if ( ! defined( 'ABSPATH' ) ) {
             </button>
         </div>
     </div>
+
+    <!-- WP notice 錨點（讓 admin notice 顯示在 hero 和卡片之間） -->
+    <div class="wrap"><h2 style="display:none;"></h2></div>
 
     <!-- 公告區 -->
     <div id="ys-announcements" class="ys-announcements-wrap" style="display:none;">
@@ -67,18 +75,7 @@ if ( ! defined( 'ABSPATH' ) ) {
         <!-- JS 會自動填入 skeleton 或外掛卡片 -->
     </div>
 
-    <!-- 市集底部 -->
-    <div class="ys-marketplace-footer">
-        <p>
-            <?php echo wp_kses_post(
-                sprintf(
-                    /* translators: %s: YANGSHEEP CLOUD link */
-                    __( '由 %s 開發與維護', 'ys-plugin-hub-client' ),
-                    '<a href="https://yangsheep.com.tw" target="_blank" rel="noopener noreferrer">YANGSHEEP CLOUD</a>'
-                )
-            ); ?>
-        </p>
-    </div>
+    <!-- WP footer 已有 YANGSHEEP CLOUD 標示，此處不重複 -->
 
     <!-- 隱藏欄位（保留功能但不向用戶顯示任何設定） -->
     <input type="hidden" id="ys-hub-url" value="<?php echo esc_attr( YS_HUB_CLIENT_HUB_URL ); ?>" />
@@ -86,4 +83,3 @@ if ( ! defined( 'ABSPATH' ) ) {
     <input type="hidden" id="ys-auto-check" value="yes" />
 
 </div><!-- .ys-marketplace-wrap -->
-</div><!-- .wrap -->

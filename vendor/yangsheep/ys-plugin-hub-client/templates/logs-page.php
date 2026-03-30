@@ -12,19 +12,26 @@
 
 defined( 'ABSPATH' ) || exit;
 ?>
-<div class="wrap">
-    <div class="ys-marketplace-wrap">
+<div class="ys-marketplace-wrap">
 
-        <!-- 色塊 Header -->
-        <div class="ys-page-hero">
+    <!-- 色塊 Header（在 WP notice 之前） -->
+    <div class="ys-page-hero">
             <div class="ys-page-hero-content">
-                <h1>
+                <div class="ys-hero-title">
                     <span class="dashicons dashicons-list-view"></span>
                     <?php esc_html_e( '系統紀錄', 'ys-plugin-hub-client' ); ?>
-                </h1>
-                <p><?php esc_html_e( '記錄所有外掛安裝、更新、連線操作（自動保留 30 天）', 'ys-plugin-hub-client' ); ?></p>
+                </div>
+                <div class="ys-hero-subtitle"><?php
+                    printf(
+                        esc_html__( '由 %s 開發與維護', 'ys-plugin-hub-client' ),
+                        '<a href="https://yangsheep.com.tw" target="_blank" rel="noopener noreferrer" style="color:rgba(255,255,255,0.95);text-decoration:none;">YANGSHEEP CLOUD</a>'
+                    );
+                ?></div>
             </div>
         </div>
+
+        <!-- WP notice 錨點 -->
+        <div class="wrap"><h2 style="display:none;"></h2></div>
 
         <!-- 篩選列 -->
         <div class="ys-log-toolbar">
@@ -48,10 +55,13 @@ defined( 'ABSPATH' ) || exit;
                 <button id="ys-log-filter-btn" class="ys-btn ys-btn-outline ys-btn-sm"><?php esc_html_e( '篩選', 'ys-plugin-hub-client' ); ?></button>
             </div>
 
-            <button id="ys-log-clear-btn" class="ys-btn ys-btn-sm" style="color:#c08080;border:1px solid #c08080;background:transparent;">
-                <span class="dashicons dashicons-trash" style="font-size:14px;width:14px;height:14px;"></span>
-                <?php esc_html_e( '清除全部日誌', 'ys-plugin-hub-client' ); ?>
-            </button>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:12px;color:#7b8a96;"><?php esc_html_e( '* 超過 30 天的紀錄會自動清除', 'ys-plugin-hub-client' ); ?></span>
+                <button id="ys-log-clear-btn" class="ys-btn ys-btn-sm" style="color:#c08080;border:1px solid #c08080;background:transparent;">
+                    <span class="dashicons dashicons-trash" style="font-size:14px;width:14px;height:14px;"></span>
+                    <?php esc_html_e( '清除全部', 'ys-plugin-hub-client' ); ?>
+                </button>
+            </div>
         </div>
 
         <!-- 日誌表格 -->
@@ -116,11 +126,6 @@ defined( 'ABSPATH' ) || exit;
             <?php endfor; ?>
         </div>
         <?php endif; ?>
-
-        <!-- Footer -->
-        <div class="ys-marketplace-footer">
-            <p>由 <a href="https://yangsheep.com.tw" target="_blank" rel="noopener noreferrer">YANGSHEEP CLOUD</a> 開發與維護</p>
-        </div>
 
     </div>
 </div>
