@@ -88,6 +88,24 @@
                 self.activatePlugin(btn, slug);
             });
 
+            // 停用外掛
+            $(document).on('click', '.ys-deactivate-btn', function (e) {
+                e.preventDefault();
+                var btn = $(this);
+                var slug = btn.data('slug');
+                self.deactivatePlugin(btn, slug);
+            });
+
+            // 刪除外掛
+            $(document).on('click', '.ys-delete-btn', function (e) {
+                e.preventDefault();
+                var btn = $(this);
+                var slug = btn.data('slug');
+                if (confirm(i18n.confirmDelete || '確定要刪除此外掛？此操作無法復原。')) {
+                    self.deletePlugin(btn, slug);
+                }
+            });
+
             // 刷新市集
             $(document).on('click', '#ys-refresh-btn', function (e) {
                 e.preventDefault();
@@ -346,11 +364,16 @@
                 // 已啟用
                 badgeHtml = priceBadgeHtml +
                     '<span class="ys-badge ys-badge-active">' + this.escHtml(i18n.active || '已啟用') + '</span>';
-                // 已啟用且有更新
                 if (plugin.update_available) {
+                    // 已啟用且有更新
                     actionHtml = '<button type="button" class="ys-btn ys-btn-primary ys-btn-sm ys-update-btn" ' +
                         'data-slug="' + slug + '" data-version="' + version + '">' +
                         this.escHtml(i18n.update || '更新') + ' v' + version + '</button>';
+                } else {
+                    // 已啟用無更新 → 停用按鈕
+                    actionHtml = '<button type="button" class="ys-btn ys-btn-muted ys-btn-sm ys-deactivate-btn" ' +
+                        'data-slug="' + slug + '">' +
+                        this.escHtml(i18n.deactivate || '停用') + '</button>';
                 }
             } else if (status === 'installed' && plugin.update_available) {
                 // 已安裝但有更新（未啟用）
@@ -360,12 +383,15 @@
                     'data-slug="' + slug + '" data-version="' + version + '">' +
                     this.escHtml(i18n.update || '更新') + ' v' + version + '</button>';
             } else if (status === 'installed') {
-                // 已安裝未啟用
+                // 已安裝未啟用 → 啟用 + 刪除按鈕
                 badgeHtml = priceBadgeHtml +
                     '<span class="ys-badge ys-badge-installed">' + this.escHtml(i18n.installed || '已安裝') + '</span>';
                 actionHtml = '<button type="button" class="ys-btn ys-btn-success ys-btn-sm ys-activate-btn" ' +
                     'data-slug="' + slug + '">' +
-                    (i18n.activate || '啟用') + '</button>';
+                    (i18n.activate || '啟用') + '</button>' +
+                    ' <button type="button" class="ys-btn ys-btn-danger-text ys-btn-sm ys-delete-btn" ' +
+                    'data-slug="' + slug + '">' +
+                    this.escHtml(i18n.deletePlugin || '刪除') + '</button>';
             } else {
                 // 未安裝
                 badgeHtml = priceBadgeHtml;
@@ -500,6 +526,95 @@
                 error: function () {
                     Toast.show(i18n.failed, 'error');
                     btn.prop('disabled', false).text(i18n.activate || '啟用');
+                }
+            });
+        },
+
+        /**
+         * 停用外掛
+         */
+        deactivatePlugin: function (btn, slug) {
+            btn.prop('disabled', true).html('<span class="ys-spinner"></span> ' + (i18n.deactivating || '停用中...'));
+
+            $.ajax({
+                url: config.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'ys_hub_client_deactivate_plugin',
+                    nonce: config.nonce,
+                    slug: slug
+                },
+                success: function (response) {
+                    if (response.success) {
+                        Toast.show(response.data.message || '已停用', 'success');
+                        // 如果是最後一個 YS 外掛 → 跳轉到外掛頁面
+                        if (response.data.is_last && response.data.redirect) {
+                            Toast.show(i18n.lastPluginWarning || '最後一個 YS 外掛已停用，即將跳轉到外掛管理頁面...', 'warning');
+                            setTimeout(function () {
+                                window.location.href = response.data.redirect;
+                            }, 1500);
+                            return;
+                        }
+                        if (response.data.plugin) {
+                            Marketplace.replaceCard(slug, response.data.plugin);
+                        }
+                    } else {
+                        Toast.show(response.data.message || i18n.failed, 'error');
+                        btn.prop('disabled', false).text(i18n.deactivate || '停用');
+                    }
+                },
+                error: function () {
+                    Toast.show(i18n.failed, 'error');
+                    btn.prop('disabled', false).text(i18n.deactivate || '停用');
+                }
+            });
+        },
+
+        /**
+         * 刪除外掛
+         */
+        deletePlugin: function (btn, slug) {
+            btn.prop('disabled', true).html('<span class="ys-spinner"></span> ' + (i18n.deleting || '刪除中...'));
+
+            $.ajax({
+                url: config.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'ys_hub_client_delete_plugin',
+                    nonce: config.nonce,
+                    slug: slug
+                },
+                success: function (response) {
+                    if (response.success) {
+                        Toast.show(response.data.message || '已刪除', 'success');
+                        // 如果沒有剩餘 YS 外掛 → 跳轉
+                        if (response.data.redirect) {
+                            setTimeout(function () {
+                                window.location.href = response.data.redirect;
+                            }, 1500);
+                            return;
+                        }
+                        // 從市集重新載入（刪除後卡片回到「安裝」狀態）
+                        var $card = $('.ys-plugin-card[data-slug="' + Marketplace.escAttr(slug) + '"]');
+                        // 更新本地資料中的狀態
+                        for (var i = 0; i < Marketplace.pluginsData.length; i++) {
+                            if (Marketplace.pluginsData[i].slug === slug) {
+                                Marketplace.pluginsData[i].status = 'not_installed';
+                                Marketplace.pluginsData[i].local_status = 'not_installed';
+                                Marketplace.pluginsData[i].local_version = '';
+                                Marketplace.pluginsData[i].update_available = false;
+                                Marketplace.replaceCard(slug, Marketplace.pluginsData[i]);
+                                break;
+                            }
+                        }
+                    } else {
+                        Toast.show(response.data.message || i18n.failed, 'error');
+                        btn.prop('disabled', false).text(i18n.deletePlugin || '刪除');
+                    }
+                },
+                error: function () {
+                    Toast.show(i18n.failed, 'error');
+                    btn.prop('disabled', false).text(i18n.deletePlugin || '刪除');
                 }
             });
         },

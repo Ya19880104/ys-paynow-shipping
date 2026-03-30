@@ -1335,3 +1335,30 @@
     font-size: 11px;
     color: var(--ys-adm-text-muted);
 }
+
+/* ============================================
+   停用 / 刪除按鈕
+   ============================================ */
+.ys-btn-muted {
+    background: transparent;
+    color: var(--ys-adm-text-muted, #7b8a96);
+    border: 1px solid var(--ys-adm-border, #e2e8ed);
+    font-size: 12px;
+}
+.ys-btn-muted:hover {
+    background: var(--ys-adm-bg, #f8fafb);
+    color: var(--ys-adm-text, #2c3e50);
+    border-color: var(--ys-adm-text-muted, #7b8a96);
+}
+
+.ys-btn-danger-text {
+    background: transparent;
+    color: var(--ys-adm-danger, #c08080);
+    border: 1px solid transparent;
+    font-size: 12px;
+}
+.ys-btn-danger-text:hover {
+    background: var(--ys-adm-danger-bg, #f8e8e8);
+    color: var(--ys-adm-danger, #c08080);
+    border-color: var(--ys-adm-danger, #c08080);
+}

@@ -41,6 +41,8 @@ final class YSHubAjaxHandler {
             'ys_hub_client_generate_site_key',
             'ys_hub_client_refresh_marketplace',
             'ys_hub_client_activate_plugin',
+            'ys_hub_client_deactivate_plugin',
+            'ys_hub_client_delete_plugin',
             'ys_hub_client_clear_logs',
         );
 
@@ -411,6 +413,127 @@ final class YSHubAjaxHandler {
         wp_send_json_success( array(
             'message' => sprintf( __( '外掛 %s 已啟用', 'ys-plugin-hub-client' ), $slug ),
             'plugin'  => $plugin_data,
+        ) );
+    }
+
+    /**
+     * 停用外掛
+     *
+     * @return void
+     */
+    public static function handle_deactivate_plugin(): void {
+        self::verify_request( 'ys_hub_marketplace_nonce' );
+
+        if ( ! current_user_can( 'activate_plugins' ) ) {
+            wp_send_json_error( array( 'message' => __( '權限不足', 'ys-plugin-hub-client' ) ) );
+        }
+
+        $slug = sanitize_text_field( wp_unslash( $_POST['slug'] ?? '' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        if ( empty( $slug ) ) {
+            wp_send_json_error( array( 'message' => __( '缺少外掛 slug', 'ys-plugin-hub-client' ) ) );
+        }
+
+        if ( ! function_exists( 'get_plugins' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        $plugin_file = '';
+        foreach ( get_plugins() as $file => $data ) {
+            if ( dirname( $file ) === $slug ) {
+                $plugin_file = $file;
+                break;
+            }
+        }
+
+        if ( empty( $plugin_file ) ) {
+            wp_send_json_error( array( 'message' => sprintf( __( '找不到外掛 %s', 'ys-plugin-hub-client' ), $slug ) ) );
+        }
+
+        // 檢查是否為最後一個啟用的 YS 外掛（停用後市集會消失）
+        $active_ys_count = 0;
+        foreach ( get_plugins() as $file => $data ) {
+            $s = dirname( $file );
+            if ( ( 0 === strpos( $s, 'ys-' ) || 0 === strpos( $s, 'yangsheep-' ) ) && is_plugin_active( $file ) ) {
+                $active_ys_count++;
+            }
+        }
+
+        $is_last = ( 1 === $active_ys_count );
+
+        deactivate_plugins( $plugin_file );
+
+        YSHubClientLogRepo::success( 'deactivate', sprintf( '外掛 %s 已停用', $slug ) );
+
+        $plugin_data = self::get_updated_plugin_data( $slug, '' );
+
+        wp_send_json_success( array(
+            'message'  => sprintf( __( '外掛 %s 已停用', 'ys-plugin-hub-client' ), $slug ),
+            'plugin'   => $plugin_data,
+            'is_last'  => $is_last,
+            'redirect' => $is_last ? admin_url( 'plugins.php' ) : '',
+        ) );
+    }
+
+    /**
+     * 刪除外掛
+     *
+     * @return void
+     */
+    public static function handle_delete_plugin(): void {
+        self::verify_request( 'ys_hub_marketplace_nonce' );
+
+        if ( ! current_user_can( 'delete_plugins' ) ) {
+            wp_send_json_error( array( 'message' => __( '權限不足', 'ys-plugin-hub-client' ) ) );
+        }
+
+        $slug = sanitize_text_field( wp_unslash( $_POST['slug'] ?? '' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        if ( empty( $slug ) ) {
+            wp_send_json_error( array( 'message' => __( '缺少外掛 slug', 'ys-plugin-hub-client' ) ) );
+        }
+
+        if ( ! function_exists( 'get_plugins' ) || ! function_exists( 'delete_plugins' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+        }
+
+        $plugin_file = '';
+        foreach ( get_plugins() as $file => $data ) {
+            if ( dirname( $file ) === $slug ) {
+                $plugin_file = $file;
+                break;
+            }
+        }
+
+        if ( empty( $plugin_file ) ) {
+            wp_send_json_error( array( 'message' => sprintf( __( '找不到外掛 %s', 'ys-plugin-hub-client' ), $slug ) ) );
+        }
+
+        // 先停用
+        if ( is_plugin_active( $plugin_file ) ) {
+            deactivate_plugins( $plugin_file );
+        }
+
+        $result = delete_plugins( array( $plugin_file ) );
+
+        if ( is_wp_error( $result ) ) {
+            YSHubClientLogRepo::error( 'delete', sprintf( '刪除 %s 失敗：%s', $slug, $result->get_error_message() ) );
+            wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+        }
+
+        YSHubClientLogRepo::success( 'delete', sprintf( '外掛 %s 已刪除', $slug ) );
+
+        // 檢查是否還有 YS 外掛存在
+        $remaining_ys = 0;
+        foreach ( get_plugins() as $file => $data ) {
+            $s = dirname( $file );
+            if ( ( 0 === strpos( $s, 'ys-' ) || 0 === strpos( $s, 'yangsheep-' ) ) && is_plugin_active( $file ) ) {
+                $remaining_ys++;
+            }
+        }
+
+        wp_send_json_success( array(
+            'message'  => sprintf( __( '外掛 %s 已刪除', 'ys-plugin-hub-client' ), $slug ),
+            'redirect' => ( 0 === $remaining_ys ) ? admin_url( 'plugins.php' ) : '',
         ) );
     }
 
