@@ -889,18 +889,18 @@
     text-align: center;
     padding: 24px 0 8px;
     margin-top: 32px;
-    border-top: 1px solid var(--ys-adm-border-light, #edf1f4);
-    color: var(--ys-adm-text-muted, #7b8a96);
-    font-size: 12px;
+    border-top: 1px solid #e2e8ed;
+    color: #7b8a96;
+    font-size: 13px;
 }
 
 .ys-marketplace-footer a {
-    color: var(--ys-adm-primary-dark, #6b8a9a);
+    color: #6b8a9a;
     text-decoration: none;
-    font-weight: 600;
 }
 
 .ys-marketplace-footer a:hover {
+    color: #8fa8b8;
     text-decoration: underline;
 }
 
@@ -913,4 +913,98 @@
 .ys-plugin-name a:hover {
     color: var(--ys-adm-primary-dark, #6b8a9a);
     text-decoration: underline;
+}
+
+/* ============================================
+   頁面色塊 Hero Header（市集 + 紀錄統一）
+   ============================================ */
+.ys-page-hero {
+    background: linear-gradient(135deg, #8fa8b8 0%, #a8bcc8 50%, #b3c7d3 100%);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin: -8px -2px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(107, 138, 154, 0.25);
+}
+
+.ys-page-hero h1 {
+    margin: 0 0 4px;
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ys-page-hero h1 .dashicons {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+}
+
+.ys-page-hero p {
+    margin: 0;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.ys-page-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+/* Hero 內的連線狀態 */
+.ys-page-hero .ys-hub-status {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.ys-page-hero .ys-hub-status-dot {
+    background: #b8e6c8;
+    box-shadow: 0 0 6px rgba(184, 230, 200, 0.6);
+}
+
+/* Hero 內的按鈕 */
+.ys-btn-hero {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: background 0.2s;
+}
+
+.ys-btn-hero:hover {
+    background: rgba(255, 255, 255, 0.35);
+    color: #fff;
+}
+
+.ys-btn-hero .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+/* 響應式 */
+@media screen and (max-width: 782px) {
+    .ys-page-hero {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+        padding: 20px 24px;
+    }
+    .ys-page-hero-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
 }

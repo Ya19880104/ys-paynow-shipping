@@ -18,18 +18,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 ?>
 <div class="ys-marketplace-wrap">
 
-    <!-- 頁面標題 -->
-    <div class="ys-marketplace-header">
-        <h1 class="ys-marketplace-title">
-            <span class="dashicons dashicons-store"></span>
-            <?php echo esc_html__( 'YS 外掛市集', 'ys-plugin-hub-client' ); ?>
-        </h1>
-        <div class="ys-marketplace-actions">
+    <!-- 色塊 Header -->
+    <div class="ys-page-hero">
+        <div class="ys-page-hero-content">
+            <h1>
+                <span class="dashicons dashicons-store"></span>
+                <?php echo esc_html__( 'YS 外掛市集', 'ys-plugin-hub-client' ); ?>
+            </h1>
+            <p><?php echo esc_html__( 'YANGSHEEP DESIGN 電商工具箱 — 瀏覽、安裝、管理所有 YS 外掛', 'ys-plugin-hub-client' ); ?></p>
+        </div>
+        <div class="ys-page-hero-actions">
             <span id="ys-hub-status" class="ys-hub-status ys-hub-status-checking" title="<?php echo esc_attr__( '檢查連線中...', 'ys-plugin-hub-client' ); ?>">
                 <span class="ys-hub-status-dot"></span>
                 <span class="ys-hub-status-text"><?php echo esc_html__( '連線中...', 'ys-plugin-hub-client' ); ?></span>
             </span>
-            <button type="button" id="ys-refresh-btn" class="ys-btn ys-btn-outline">
+            <button type="button" id="ys-refresh-btn" class="ys-btn ys-btn-hero">
                 <span class="dashicons dashicons-update"></span>
                 <?php echo esc_html__( '檢查更新', 'ys-plugin-hub-client' ); ?>
             </button>

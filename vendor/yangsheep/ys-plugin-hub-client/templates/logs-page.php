@@ -14,10 +14,16 @@ defined( 'ABSPATH' ) || exit;
 ?>
 <div class="wrap ys-marketplace-wrap">
 
-    <h1 class="ys-page-title">
-        <span class="dashicons dashicons-list-view"></span>
-        <?php esc_html_e( '操作日誌', 'ys-plugin-hub-client' ); ?>
-    </h1>
+    <!-- 色塊 Header（與市集統一） -->
+    <div class="ys-page-hero">
+        <div class="ys-page-hero-content">
+            <h1>
+                <span class="dashicons dashicons-list-view"></span>
+                <?php esc_html_e( '系統紀錄', 'ys-plugin-hub-client' ); ?>
+            </h1>
+            <p><?php esc_html_e( '記錄所有外掛安裝、更新、連線操作（自動保留 30 天）', 'ys-plugin-hub-client' ); ?></p>
+        </div>
+    </div>
 
     <!-- 篩選列 -->
     <div class="ys-log-filters" style="display:flex;gap:10px;margin:16px 0;align-items:center;">
