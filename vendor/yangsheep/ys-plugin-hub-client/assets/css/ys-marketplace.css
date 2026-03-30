@@ -1008,3 +1008,71 @@
         justify-content: flex-start;
     }
 }
+
+/* ============================================
+   卡片 Footer 左右分割
+   ============================================ */
+.ys-plugin-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+.ys-card-footer-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.ys-card-footer-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+}
+
+/* 已連線狀態文字（hero 內） */
+.ys-hub-status-text {
+    font-size: 13px;
+}
+.ys-page-hero .ys-hub-status-connected .ys-hub-status-text {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* 日誌頁工具列 */
+.ys-log-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 16px 0;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.ys-log-filters {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.ys-log-table {
+    border-color: #e2e8ed;
+}
+
+/* 已啟用/已安裝 badge */
+.ys-badge-active {
+    background: #e8f3ec;
+    color: #7dab8e;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.ys-badge-installed {
+    background: #e8eff5;
+    color: #6b8a9a;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}

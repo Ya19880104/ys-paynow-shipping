@@ -16,6 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 ?>
+<div class="wrap">
 <div class="ys-marketplace-wrap">
 
     <!-- 色塊 Header -->
@@ -84,4 +85,5 @@ if ( ! defined( 'ABSPATH' ) ) {
     <input type="hidden" id="ys-site-key" value="<?php echo esc_attr( $site_key ); ?>" />
     <input type="hidden" id="ys-auto-check" value="yes" />
 
-</div>
+</div><!-- .ys-marketplace-wrap -->
+</div><!-- .wrap -->

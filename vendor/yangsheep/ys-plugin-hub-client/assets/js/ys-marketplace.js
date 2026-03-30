@@ -344,7 +344,8 @@
                 }
             } else if (status === 'active') {
                 // 已啟用
-                badgeHtml = priceBadgeHtml;
+                badgeHtml = priceBadgeHtml +
+                    '<span class="ys-badge ys-badge-active">' + this.escHtml(i18n.active || '已啟用') + '</span>';
                 // 已啟用且有更新
                 if (plugin.update_available) {
                     actionHtml = '<button type="button" class="ys-btn ys-btn-primary ys-btn-sm ys-update-btn" ' +
@@ -353,13 +354,15 @@
                 }
             } else if (status === 'installed' && plugin.update_available) {
                 // 已安裝但有更新
-                badgeHtml = priceBadgeHtml;
+                badgeHtml = priceBadgeHtml +
+                    '<span class="ys-badge ys-badge-installed">' + this.escHtml(i18n.installed || '已安裝') + '</span>';
                 actionHtml = '<button type="button" class="ys-btn ys-btn-primary ys-btn-sm ys-update-btn" ' +
                     'data-slug="' + slug + '" data-version="' + version + '">' +
                     this.escHtml(i18n.update || '更新') + '</button>';
             } else if (status === 'installed') {
                 // 已安裝未啟用
-                badgeHtml = priceBadgeHtml;
+                badgeHtml = priceBadgeHtml +
+                    '<span class="ys-badge ys-badge-installed">' + this.escHtml(i18n.installed || '已安裝') + '</span>';
                 actionHtml = '<button type="button" class="ys-btn ys-btn-success ys-btn-sm ys-activate-btn" ' +
                     'data-slug="' + slug + '">' +
                     (i18n.activate || '啟用') + '</button>';
@@ -384,7 +387,8 @@
                 '</div></div>' +
                 '<div class="ys-plugin-description">' + description + '</div>' +
                 '<div class="ys-plugin-card-footer">' +
-                badgeHtml + actionHtml +
+                '<div class="ys-card-footer-left">' + badgeHtml + '</div>' +
+                '<div class="ys-card-footer-right">' + actionHtml + '</div>' +
                 '</div></div>';
         },
 
