@@ -396,9 +396,9 @@
          * 整張卡片重新渲染（安裝/更新/啟用後使用）
          */
         replaceCard: function (slug, pluginData) {
-            var $oldCard = $('.ys-plugin-card[data-slug="' + this.escAttr(slug) + '"]');
+            var $oldCard = $('.ys-plugin-card[data-slug="' + Marketplace.escAttr(slug) + '"]');
             if ($oldCard.length && pluginData) {
-                var newCardHtml = this.renderPluginCard(pluginData);
+                var newCardHtml = Marketplace.buildCard(pluginData);
                 $oldCard.replaceWith(newCardHtml);
             }
         },
