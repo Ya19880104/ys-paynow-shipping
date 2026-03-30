@@ -881,3 +881,36 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ============================================
+   市集底部
+   ============================================ */
+.ys-marketplace-footer {
+    text-align: center;
+    padding: 24px 0 8px;
+    margin-top: 32px;
+    border-top: 1px solid var(--ys-adm-border-light, #edf1f4);
+    color: var(--ys-adm-text-muted, #7b8a96);
+    font-size: 12px;
+}
+
+.ys-marketplace-footer a {
+    color: var(--ys-adm-primary-dark, #6b8a9a);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.ys-marketplace-footer a:hover {
+    text-decoration: underline;
+}
+
+/* 外掛標題連結 */
+.ys-plugin-name a {
+    color: var(--ys-adm-text, #2c3e50);
+    text-decoration: none;
+}
+
+.ys-plugin-name a:hover {
+    color: var(--ys-adm-primary-dark, #6b8a9a);
+    text-decoration: underline;
+}

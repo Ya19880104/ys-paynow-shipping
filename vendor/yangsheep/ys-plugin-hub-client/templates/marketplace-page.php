@@ -63,6 +63,19 @@ if ( ! defined( 'ABSPATH' ) ) {
         <!-- JS 會自動填入 skeleton 或外掛卡片 -->
     </div>
 
+    <!-- 市集底部 -->
+    <div class="ys-marketplace-footer">
+        <p>
+            <?php echo wp_kses_post(
+                sprintf(
+                    /* translators: %s: YANGSHEEP CLOUD link */
+                    __( '由 %s 開發與維護', 'ys-plugin-hub-client' ),
+                    '<a href="https://yangsheep.com.tw" target="_blank" rel="noopener noreferrer">YANGSHEEP CLOUD</a>'
+                )
+            ); ?>
+        </p>
+    </div>
+
     <!-- 隱藏欄位（保留功能但不向用戶顯示任何設定） -->
     <input type="hidden" id="ys-hub-url" value="<?php echo esc_attr( YS_HUB_CLIENT_HUB_URL ); ?>" />
     <input type="hidden" id="ys-site-key" value="<?php echo esc_attr( $site_key ); ?>" />

@@ -71,6 +71,9 @@ final class YSPluginHubClient {
 
         // 註冊背景 Cron
         add_action( 'ys_hub_bg_check', array( YSUpdateChecker::class, 'background_check' ) );
+
+        // WP admin footer 加入 YANGSHEEP CLOUD
+        add_filter( 'admin_footer_text', array( $this, 'admin_footer_text' ) );
     }
 
     /**
@@ -126,6 +129,14 @@ final class YSPluginHubClient {
             'ys-hub-logs',
             array( $this, 'render_logs_page' )
         );
+
+        // 聯絡我們（外部連結，新開視窗）
+        global $submenu;
+        $submenu['ys-toolbox'][] = array(
+            '<span id="ys-contact-link">' . esc_html__( '聯絡我們', 'ys-plugin-hub-client' ) . ' <span class="dashicons dashicons-external" style="font-size:12px;width:12px;height:12px;vertical-align:text-top;"></span></span>',
+            'manage_options',
+            'https://yangsheep.com.tw/contact-us/',
+        );
     }
 
     /**
@@ -159,6 +170,22 @@ final class YSPluginHubClient {
         wp_enqueue_style( 'ys-marketplace', YS_HUB_CLIENT_URL . 'assets/css/ys-marketplace.css', array(), YS_HUB_CLIENT_VERSION );
 
         include YS_HUB_CLIENT_DIR . 'templates/logs-page.php';
+    }
+
+    /**
+     * WP admin footer 加入 YANGSHEEP CLOUD 標示
+     *
+     * @param string $text 原始 footer 文字
+     * @return string
+     */
+    public function admin_footer_text( string $text ): string {
+        $ys_credit = sprintf(
+            /* translators: %s: YANGSHEEP CLOUD link */
+            __( '由 %s 開發與維護', 'ys-plugin-hub-client' ),
+            '<a href="https://yangsheep.com.tw" target="_blank" rel="noopener noreferrer">YANGSHEEP CLOUD</a>'
+        );
+
+        return $text . ' | ' . $ys_credit;
     }
 
     /**

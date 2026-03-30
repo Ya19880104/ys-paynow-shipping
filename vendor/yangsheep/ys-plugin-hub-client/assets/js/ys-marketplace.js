@@ -317,6 +317,7 @@
             var priceType = plugin.price_type || 'free';
             var priceAmount = plugin.price_amount || '';
             var externalUrl = plugin.external_url || '';
+            var infoUrl = plugin.info_url || '';
 
             // 價格徽章
             var priceBadgeHtml = '';
@@ -378,7 +379,7 @@
                 '<div class="ys-plugin-card-header">' +
                 '<div class="ys-plugin-icon"><span class="dashicons ' + this.escAttr(icon) + '"></span></div>' +
                 '<div class="ys-plugin-meta">' +
-                '<h3 class="ys-plugin-name">' + name + '</h3>' +
+                '<h3 class="ys-plugin-name">' + (infoUrl ? '<a href="' + this.escAttr(infoUrl) + '" target="_blank" rel="noopener noreferrer">' + name + '</a>' : name) + '</h3>' +
                 '<span class="ys-plugin-version">' + versionLabel + '</span>' +
                 '</div></div>' +
                 '<div class="ys-plugin-description">' + description + '</div>' +
