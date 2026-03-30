@@ -170,7 +170,9 @@ final class YSPluginHubClient {
         $total = $log_repo->count( $filter_level, $filter_action );
 
         // Enqueue marketplace CSS（共用莫蘭迪色系）
-        wp_enqueue_style( 'ys-marketplace', YS_HUB_CLIENT_URL . 'assets/css/ys-marketplace.css', array(), YS_HUB_CLIENT_VERSION );
+        $css_file    = YS_HUB_CLIENT_DIR . 'assets/css/ys-marketplace.css';
+        $css_version = YS_HUB_CLIENT_VERSION . '.' . ( file_exists( $css_file ) ? filemtime( $css_file ) : time() );
+        wp_enqueue_style( 'ys-marketplace', YS_HUB_CLIENT_URL . 'assets/css/ys-marketplace.css', array(), $css_version );
 
         include YS_HUB_CLIENT_DIR . 'templates/logs-page.php';
     }

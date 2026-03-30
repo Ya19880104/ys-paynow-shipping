@@ -49,7 +49,9 @@ final class YSMarketplacePage {
      * @return void
      */
     private static function enqueue_assets(): void {
-        $version = YS_HUB_CLIENT_VERSION;
+        // 使用 JS 檔案的修改時間作為版本號，確保更新後 bust cache
+        $js_file = YS_HUB_CLIENT_DIR . 'assets/js/ys-marketplace.js';
+        $version = YS_HUB_CLIENT_VERSION . '.' . ( file_exists( $js_file ) ? filemtime( $js_file ) : time() );
 
         wp_enqueue_style(
             'ys-marketplace',
