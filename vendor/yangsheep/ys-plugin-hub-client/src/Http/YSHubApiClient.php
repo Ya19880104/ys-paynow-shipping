@@ -121,11 +121,19 @@ final class YSHubApiClient {
      * @return array|\WP_Error
      */
     public function get_marketplace_plugins() {
-        return $this->get(
+        // 改用 POST 以便帶上已安裝外掛資訊（讓 Hub 記錄 plugins_data）
+        $ys_plugins   = \YangSheep\PluginHubClient\YSPluginHubClient::detect_ys_plugins();
+        $plugins_data = array();
+        foreach ( $ys_plugins as $slug => $info ) {
+            $plugins_data[ $slug ] = $info['version'];
+        }
+
+        return $this->post(
             YSEndpointRegistry::MARKETPLACE_LIST,
             array(
                 'site_url' => get_site_url(),
                 'site_key' => $this->site_key,
+                'plugins'  => $plugins_data,
             )
         );
     }
