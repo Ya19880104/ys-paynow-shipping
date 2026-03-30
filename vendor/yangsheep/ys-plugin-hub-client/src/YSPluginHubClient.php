@@ -123,11 +123,11 @@ final class YSPluginHubClient {
             array( YSMarketplacePage::class, 'render' )
         );
 
-        // 系統紀錄子選單
+        // 系統資訊子選單
         add_submenu_page(
             'ys-toolbox',
-            esc_html__( '系統紀錄', 'ys-plugin-hub-client' ),
-            esc_html__( '系統紀錄', 'ys-plugin-hub-client' ),
+            esc_html__( '系統資訊', 'ys-plugin-hub-client' ),
+            esc_html__( '系統資訊', 'ys-plugin-hub-client' ),
             'manage_options',
             'ys-hub-logs',
             array( $this, 'render_logs_page' )
