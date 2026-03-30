@@ -393,6 +393,17 @@
         },
 
         /**
+         * 整張卡片重新渲染（安裝/更新/啟用後使用）
+         */
+        replaceCard: function (slug, pluginData) {
+            var $oldCard = $('.ys-plugin-card[data-slug="' + this.escAttr(slug) + '"]');
+            if ($oldCard.length && pluginData) {
+                var newCardHtml = this.renderPluginCard(pluginData);
+                $oldCard.replaceWith(newCardHtml);
+            }
+        },
+
+        /**
          * 安裝外掛
          */
         installPlugin: function (btn, slug, version) {
@@ -411,16 +422,10 @@
                 success: function (response) {
                     if (response.success) {
                         Toast.show(response.data.message || i18n.success, 'success');
-                        // 安裝成功 → 按鈕變為「啟用」
-                        var $card = btn.closest('.ys-plugin-card');
-                        $card.find('.ys-badge').replaceWith(
-                            '<span class="ys-badge ys-badge-installed">' + (i18n.installed || '已安裝') + '</span>'
-                        );
-                        btn.removeClass('ys-install-btn ys-btn-outline')
-                           .addClass('ys-activate-btn ys-btn-success')
-                           .prop('disabled', false)
-                           .attr('data-slug', slug)
-                           .text(i18n.activate || '啟用');
+                        // 整張卡片用回傳的 plugin data 重新渲染
+                        if (response.data.plugin) {
+                            Marketplace.replaceCard(slug, response.data.plugin);
+                        }
                     } else {
                         Toast.show(response.data.message || i18n.failed, 'error');
                         btn.prop('disabled', false).text(origText);
@@ -452,19 +457,9 @@
                 success: function (response) {
                     if (response.success) {
                         Toast.show(response.data.message || i18n.success, 'success');
-                        var $card = btn.closest('.ys-plugin-card');
-
-                        // 更新版本號顯示
-                        $card.find('.ys-plugin-version').text('v' + version);
-
-                        // 更新 badge — 已啟用（installer 會自動重啟用）
-                        $card.find('.ys-card-footer-left').html(
-                            '<span class="ys-price-badge-free">' + (i18n.free || '免費') + '</span>' +
-                            '<span class="ys-badge ys-badge-active">' + (i18n.active || '已啟用') + '</span>'
-                        );
-
-                        // 移除更新按鈕
-                        btn.remove();
+                        if (response.data.plugin) {
+                            Marketplace.replaceCard(slug, response.data.plugin);
+                        }
                     } else {
                         Toast.show(response.data.message || i18n.failed, 'error');
                         btn.prop('disabled', false).text(origText);
@@ -494,11 +489,9 @@
                 success: function (response) {
                     if (response.success) {
                         Toast.show(response.data.message || (i18n.activated || '已啟用'), 'success');
-                        var $card = btn.closest('.ys-plugin-card');
-                        $card.find('.ys-badge').replaceWith(
-                            '<span class="ys-badge ys-badge-active">' + (i18n.active || '已啟用') + '</span>'
-                        );
-                        btn.remove();
+                        if (response.data.plugin) {
+                            Marketplace.replaceCard(slug, response.data.plugin);
+                        }
                     } else {
                         Toast.show(response.data.message || i18n.failed, 'error');
                         btn.prop('disabled', false).text(i18n.activate || '啟用');

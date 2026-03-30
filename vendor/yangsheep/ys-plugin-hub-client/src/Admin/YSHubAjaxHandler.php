@@ -151,12 +151,15 @@ final class YSHubAjaxHandler {
             ) );
         }
 
+        $plugin_data = self::get_updated_plugin_data( $slug, $version );
+
         wp_send_json_success( array(
             'message' => sprintf(
                 /* translators: %s: 外掛 slug */
                 __( '外掛 %s 安裝成功', 'ys-plugin-hub-client' ),
                 $slug
             ),
+            'plugin'  => $plugin_data,
         ) );
     }
 
@@ -191,12 +194,16 @@ final class YSHubAjaxHandler {
             ) );
         }
 
+        // 回傳更新後的外掛完整狀態（讓 JS 整張卡片重新渲染）
+        $plugin_data = self::get_updated_plugin_data( $slug, $version );
+
         wp_send_json_success( array(
             'message' => sprintf(
                 /* translators: %s: 外掛 slug */
                 __( '外掛 %s 更新成功', 'ys-plugin-hub-client' ),
                 $slug
             ),
+            'plugin'  => $plugin_data,
         ) );
     }
 
@@ -398,7 +405,13 @@ final class YSHubAjaxHandler {
         }
 
         YSHubClientLogRepo::success( 'activate', sprintf( '外掛 %s 已啟用', $slug ) );
-        wp_send_json_success( array( 'message' => sprintf( __( '外掛 %s 已啟用', 'ys-plugin-hub-client' ), $slug ) ) );
+
+        $plugin_data = self::get_updated_plugin_data( $slug, '' );
+
+        wp_send_json_success( array(
+            'message' => sprintf( __( '外掛 %s 已啟用', 'ys-plugin-hub-client' ), $slug ),
+            'plugin'  => $plugin_data,
+        ) );
     }
 
     /**
@@ -423,6 +436,64 @@ final class YSHubAjaxHandler {
      * @param array $plugins Hub 回傳的外掛列表。
      * @return array 合併後的外掛列表。
      */
+    /**
+     * 取得更新/安裝/啟用後的外掛完整狀態
+     *
+     * @param string $slug    外掛 slug
+     * @param string $version 版本號（空字串時從本地讀取）
+     * @return array 外掛資料（含 status, local_version, update_available）
+     */
+    private static function get_updated_plugin_data( string $slug, string $version ): array {
+        if ( ! function_exists( 'get_plugins' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        $all_plugins    = get_plugins();
+        $active_plugins = get_option( 'active_plugins', array() );
+
+        $local_version = '';
+        $is_active     = false;
+        $plugin_name   = $slug;
+
+        foreach ( $all_plugins as $file => $data ) {
+            if ( dirname( $file ) === $slug ) {
+                $local_version = $data['Version'] ?? '0.0.0';
+                $is_active     = in_array( $file, $active_plugins, true );
+                $plugin_name   = $data['Name'] ?? $slug;
+                break;
+            }
+        }
+
+        // 從 Hub 快取取得遠端版本（如果有的話）
+        $remote_version = $version;
+        $cached = get_site_transient( 'ys_hub_marketplace_data' );
+        if ( is_array( $cached ) && isset( $cached['plugins'] ) ) {
+            foreach ( $cached['plugins'] as $p ) {
+                if ( ( $p['slug'] ?? '' ) === $slug ) {
+                    if ( empty( $remote_version ) ) {
+                        $remote_version = $p['version'] ?? '';
+                    }
+                    // 合併遠端資料
+                    return array_merge( $p, array(
+                        'status'           => $is_active ? 'active' : 'installed',
+                        'local_version'    => $local_version,
+                        'update_available' => version_compare( $p['version'] ?? '0', $local_version, '>' ),
+                    ) );
+                }
+            }
+        }
+
+        return array(
+            'slug'             => $slug,
+            'name'             => $plugin_name,
+            'version'          => $remote_version ?: $local_version,
+            'status'           => $is_active ? 'active' : 'installed',
+            'local_version'    => $local_version,
+            'update_available' => false,
+            'price_type'       => 'free',
+        );
+    }
+
     private static function merge_local_status( array $plugins ): array {
         if ( ! function_exists( 'get_plugins' ) ) {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
