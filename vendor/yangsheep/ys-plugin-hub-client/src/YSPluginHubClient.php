@@ -55,7 +55,13 @@ final class YSPluginHubClient {
      * @return void
      */
     private function init_hooks(): void {
-        // 後台才初始化
+        // 更新檢查器（前後台 + Cron 都需要，不限 is_admin）
+        YSUpdateChecker::init();
+
+        // 背景 Cron hook（不限 is_admin，WP Cron 也需要）
+        add_action( 'ys_hub_bg_check', array( YSUpdateChecker::class, 'background_check' ) );
+
+        // 以下僅後台
         if ( ! is_admin() ) {
             return;
         }
@@ -65,12 +71,6 @@ final class YSPluginHubClient {
 
         // 初始化 AJAX 處理器
         YSHubAjaxHandler::init();
-
-        // 初始化更新檢查器
-        YSUpdateChecker::init();
-
-        // 註冊背景 Cron
-        add_action( 'ys_hub_bg_check', array( YSUpdateChecker::class, 'background_check' ) );
 
         // WP admin footer 加入 YANGSHEEP CLOUD
         add_filter( 'admin_footer_text', array( $this, 'admin_footer_text' ) );

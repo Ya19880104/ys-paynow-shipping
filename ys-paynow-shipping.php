@@ -12,7 +12,7 @@
  * Plugin Name:       YS PAYNOW VIA WOOCOMMERCE
  * Plugin URI:        https://yangsheep.com.tw/plugins/ys-paynow-shipping
  * Description:       整合 PayNow 物流服務至 WooCommerce，支援 7-11、全家、萊爾富超商取貨與黑貓宅配。
- * Version:           1.5.6
+ * Version:           1.5.7
  * Author:            YANGSHEEP DESIGN
  * Author URI:        https://yangsheep.com.tw
  * License:           GPL-2.0+
@@ -37,7 +37,7 @@ if ( ! defined( 'WPINC' ) ) {
 |--------------------------------------------------------------------------
 | 定義外掛所需的常數，方便在各處使用。
 */
-define( 'YS_PAYNOW_SHIPPING_VERSION', '1.5.6' );
+define( 'YS_PAYNOW_SHIPPING_VERSION', '1.5.7' );
 define( 'YS_PAYNOW_SHIPPING_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'YS_PAYNOW_SHIPPING_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'YS_PAYNOW_SHIPPING_BASENAME', plugin_basename( __FILE__ ) );

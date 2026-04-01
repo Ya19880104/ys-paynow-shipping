@@ -82,9 +82,12 @@ class YSUpdateChecker {
         $cached = get_site_transient( self::CACHE_KEY );
 
         if ( false === $cached || ! is_array( $cached ) ) {
-            // 快取不存在或過期 → 排程背景更新
-            self::maybe_schedule_background_check();
-            return $transient;
+            // 快取不存在或過期 → 嘗試同步取得（帶超時保護）
+            // 不再依賴 WP Cron 單次事件（WP-CLI cron 環境下 autoloader 可能不完整）
+            $cached = self::sync_update_check();
+            if ( false === $cached || ! is_array( $cached ) ) {
+                return $transient;
+            }
         }
 
         // 有快取 → 注入更新資訊
@@ -144,23 +147,62 @@ class YSUpdateChecker {
     }
 
     /**
-     * 排程背景更新檢查（如果尚未排程）
+     * 同步更新檢查（帶超時保護和快取鎖）
      *
-     * @return void
+     * 當快取為空時直接呼叫 Hub API（不依賴 WP Cron），
+     * 使用 5 分鐘鎖避免短時間內重複請求。
+     *
+     * @return array|false 成功回傳快取陣列，失敗回傳 false
      */
-    private static function maybe_schedule_background_check(): void {
-        // 使用短暫 transient 作為鎖，避免重複排程
+    private static function sync_update_check() {
+        // 5 分鐘內不重複請求
         if ( get_site_transient( self::BG_LOCK_KEY ) ) {
-            return;
+            return false;
         }
-
-        // 設定 5 分鐘鎖
         set_site_transient( self::BG_LOCK_KEY, 1, 300 );
 
-        // 排程單次背景事件
-        if ( ! wp_next_scheduled( 'ys_hub_bg_check' ) ) {
-            wp_schedule_single_event( time(), 'ys_hub_bg_check' );
+        // Circuit Breaker 檢查
+        if ( ! YSCircuitBreaker::is_available() ) {
+            return false;
         }
+
+        // 收集已安裝外掛
+        $ys_plugins = YSPluginHubClient::detect_ys_plugins();
+        if ( empty( $ys_plugins ) ) {
+            return false;
+        }
+
+        $plugins_data = array();
+        foreach ( $ys_plugins as $slug => $info ) {
+            $plugins_data[ $slug ] = $info['version'];
+        }
+
+        // 呼叫 Hub（ApiClient 已有超時保護 + Circuit Breaker）
+        $api      = YSHubApiClient::instance();
+        $response = $api->check_updates( $plugins_data );
+
+        if ( is_wp_error( $response ) ) {
+            return false;
+        }
+
+        // 合併 updates + no_updates
+        $all_plugins = array();
+        if ( isset( $response['updates'] ) && is_array( $response['updates'] ) ) {
+            $all_plugins = array_merge( $all_plugins, $response['updates'] );
+        }
+        if ( isset( $response['no_updates'] ) && is_array( $response['no_updates'] ) ) {
+            $all_plugins = array_merge( $all_plugins, $response['no_updates'] );
+        }
+        if ( empty( $all_plugins ) && isset( $response['plugins'] ) ) {
+            $all_plugins = $response['plugins'];
+        }
+
+        if ( ! empty( $all_plugins ) ) {
+            set_site_transient( self::CACHE_KEY, $all_plugins, self::CACHE_TTL );
+            return $all_plugins;
+        }
+
+        return false;
     }
 
     /**
