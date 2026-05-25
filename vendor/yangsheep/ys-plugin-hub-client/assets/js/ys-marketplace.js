@@ -1,6 +1,6 @@
 /**
  * YS Plugin Hub Client - 市集頁面前端邏輯
- * v2.0.0
+ * v2.0.2
  *
  * 所有操作走 AJAX，禁止 form POST。
  */
@@ -18,6 +18,8 @@
         /** 目前篩選的分類 */
         currentCategory: 'all',
 
+        currentPlatform: 'all',
+
         /** 目前搜尋關鍵字 */
         searchKeyword: '',
 
@@ -26,6 +28,8 @@
 
         /** 分類資料 */
         categoriesData: [],
+
+        platformsData: [],
 
         /** 公告資料 */
         announcementsData: [],
@@ -38,18 +42,111 @@
             this.loadPlugins();
         },
 
+        normalizePlatforms: function (platforms, plugins) {
+            var defaults = [
+                {slug: 'ys-cart', name: 'YS CART'},
+                {slug: 'woocommerce', name: 'WooCommerce'},
+                {slug: 'wordpress', name: 'WordPress'}
+            ];
+            var source = Array.isArray(platforms) && platforms.length ? platforms : defaults;
+            var seen = {};
+            var result = [];
+
+            $.each(source, function (i, platform) {
+                var slug = platform.slug || '';
+                if (!slug || seen[slug]) return;
+                seen[slug] = true;
+                result.push({
+                    slug: slug,
+                    name: platform.name || slug
+                });
+            });
+
+            $.each(plugins || [], function (i, plugin) {
+                var slug = Marketplace.getPluginPlatform(plugin);
+                if (!slug || seen[slug]) return;
+                seen[slug] = true;
+                result.push({
+                    slug: slug,
+                    name: plugin.platform_label || slug
+                });
+            });
+
+            return result;
+        },
+
+        getPluginPlatform: function (plugin) {
+            if (plugin.platform) return plugin.platform;
+            if (plugin.slug === 'ys-cart') return 'ys-cart';
+            if (plugin.category === 'payment' || plugin.category === 'shipping' || plugin.category === 'checkout' || plugin.category === 'cart') {
+                return 'woocommerce';
+            }
+            if ((plugin.name || '').toLowerCase().indexOf('woocommerce') !== -1) return 'woocommerce';
+            return 'wordpress';
+        },
+
+        findCategoryLabel: function (category) {
+            if (!category) return '';
+            for (var i = 0; i < this.categoriesData.length; i++) {
+                if (this.categoriesData[i].slug === category) {
+                    return this.categoriesData[i].name || category;
+                }
+            }
+            return category;
+        },
+
+        findPlatformLabel: function (platform) {
+            if (!platform) return '';
+            for (var i = 0; i < this.platformsData.length; i++) {
+                if (this.platformsData[i].slug === platform) {
+                    return this.platformsData[i].name || platform;
+                }
+            }
+            if (platform === 'ys-cart') return 'YS CART';
+            if (platform === 'woocommerce') return 'WooCommerce';
+            if (platform === 'wordpress') return 'WordPress';
+            return platform;
+        },
+
+        renderPlatformTabs: function () {
+            var self = this;
+            var $tabs = $('#ys-platform-tabs');
+            if (!$tabs.length) return;
+
+            $tabs.find('.ys-platform-tab[data-platform!="all"]').remove();
+
+            $.each(self.platformsData, function (i, platform) {
+                var $tab = $('<button type="button" class="ys-filter-tab ys-platform-tab" data-platform="' + self.escAttr(platform.slug) + '">' +
+                    self.escHtml(platform.name) + '</button>');
+                $tabs.append($tab);
+            });
+
+            $tabs.find('.ys-platform-tab').removeClass('active');
+            $tabs.find('.ys-platform-tab[data-platform="' + self.escAttr(self.currentPlatform) + '"]').addClass('active');
+        },
+
         /**
          * 綁定事件
          */
         bindEvents: function () {
             var self = this;
 
+            $(document).on('click', '.ys-platform-tab', function (e) {
+                e.preventDefault();
+                self.currentPlatform = $(this).data('platform') || 'all';
+                self.currentCategory = 'all';
+                $('.ys-platform-tab').removeClass('active');
+                $(this).addClass('active');
+                self.renderCategoryTabs();
+                self.renderPlugins();
+            });
+
             // 分類篩選
-            $(document).on('click', '.ys-filter-tab', function (e) {
+            $(document).on('click', '.ys-filter-tab:not(.ys-platform-tab)', function (e) {
                 e.preventDefault();
                 var category = $(this).data('category');
                 self.currentCategory = category;
-                $('.ys-filter-tab').removeClass('active');
+                $('.ys-filter-tabs .ys-filter-tab').removeClass('active');
                 $(this).addClass('active');
                 self.renderPlugins();
             });
@@ -175,6 +272,9 @@
                         }
                         self.pluginsData = plugins;
 
+                        self.platformsData = self.normalizePlatforms(response.data.platforms || [], plugins);
+                        self.renderPlatformTabs();
+
                         // 處理分類資料
                         var categories = response.data.categories || [];
                         if (Array.isArray(categories)) {
@@ -298,6 +398,12 @@
             var self = this;
             var result = self.pluginsData;
 
+            if (self.currentPlatform !== 'all') {
+                result = $.grep(result, function (p) {
+                    return self.getPluginPlatform(p) === self.currentPlatform;
+                });
+            }
+
             // 分類篩選
             if (self.currentCategory !== 'all') {
                 result = $.grep(result, function (p) {
@@ -336,6 +442,9 @@
             var priceAmount = plugin.price_amount || '';
             var externalUrl = plugin.external_url || '';
             var infoUrl = plugin.info_url || '';
+            var platformSlug = this.getPluginPlatform(plugin);
+            var platformLabel = plugin.platform_label || this.findPlatformLabel(platformSlug);
+            var categoryLabel = plugin.category_label || this.findCategoryLabel(plugin.category || '');
 
             // 價格徽章
             var priceBadgeHtml = '';
@@ -403,6 +512,21 @@
             var versionLabel = localVersion
                 ? 'v' + this.escHtml(localVersion)
                 : 'v' + version;
+            var taxonomyBadges = [];
+            if (platformLabel) {
+                taxonomyBadges.push(
+                    '<span class="ys-plugin-taxonomy-badge ys-plugin-platform-badge">' + this.escHtml(platformLabel) + '</span>'
+                );
+            }
+            if (categoryLabel && (!platformLabel || categoryLabel.toLowerCase() !== platformLabel.toLowerCase())) {
+                taxonomyBadges.push(
+                    '<span class="ys-plugin-taxonomy-badge ys-plugin-category-badge">' + this.escHtml(categoryLabel) + '</span>'
+                );
+            }
+            if (taxonomyBadges.length) {
+                versionLabel = '<span class="ys-plugin-taxonomy-tags">' + taxonomyBadges.join('') + '</span>' +
+                    '<span class="ys-plugin-version-number">' + versionLabel + '</span>';
+            }
 
             return '<div class="ys-plugin-card" data-slug="' + slug + '">' +
                 '<div class="ys-plugin-card-header">' +
@@ -638,6 +762,8 @@
                     btn.prop('disabled', false).text(origText);
                     if (response.success && response.data && response.data.plugins) {
                         self.pluginsData = response.data.plugins;
+                        self.platformsData = self.normalizePlatforms(response.data.platforms || [], self.pluginsData);
+                        self.renderPlatformTabs();
 
                         // 更新分類
                         if (response.data.categories && Array.isArray(response.data.categories)) {
@@ -713,11 +839,26 @@
             var self = this;
             var $tabs = $('#ys-filter-tabs');
             if (!$tabs.length) return;
+            var visibleCategories = {};
+            var categoryStillVisible = self.currentCategory === 'all';
+
+            $.each(self.pluginsData, function (i, plugin) {
+                if (self.currentPlatform !== 'all' && self.getPluginPlatform(plugin) !== self.currentPlatform) {
+                    return;
+                }
+                if (plugin.category) {
+                    visibleCategories[plugin.category] = true;
+                }
+            });
 
             // 保留「全部」按鈕，移除其他動態 tab
             $tabs.find('.ys-filter-tab[data-category!="all"]').remove();
 
             $.each(self.categoriesData, function (i, cat) {
+                if (!visibleCategories[cat.slug]) return;
+                if (cat.slug === self.currentCategory) {
+                    categoryStillVisible = true;
+                }
                 var icon = cat.icon ? '<span class="dashicons ' + self.escAttr(cat.icon) + '" style="font-size:14px;width:14px;height:14px;margin-right:4px;"></span>' : '';
                 var $tab = $('<button type="button" class="ys-filter-tab" data-category="' + self.escAttr(cat.slug) + '">' +
                     icon + self.escHtml(cat.name) + '</button>');
@@ -725,6 +866,11 @@
             });
 
             // 重新標記 active 狀態
+            $tabs.find('.ys-filter-tab').removeClass('active');
+            if (!categoryStillVisible) {
+                self.currentCategory = 'all';
+            }
+
             $tabs.find('.ys-filter-tab').removeClass('active');
             $tabs.find('.ys-filter-tab[data-category="' + self.escAttr(self.currentCategory) + '"]').addClass('active');
         },

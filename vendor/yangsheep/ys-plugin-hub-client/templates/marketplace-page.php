@@ -1,85 +1,79 @@
 <?php
 /**
- * 市集頁面模板
- *
- * 渲染 skeleton loading → 前端 AJAX 載入外掛列表。
+ * Marketplace page template.
  *
  * @package YangSheep\PluginHubClient
  *
- * @var string $site_key   站台識別金鑰
- * @var string $auto_check 自動檢查更新 (yes/no)
- * @var string $cb_state   Circuit Breaker 狀態
- * @var string $cb_label   Circuit Breaker 狀態中文標籤
+ * @var string $site_key   Registered site key.
+ * @var string $auto_check Auto-check setting.
+ * @var string $cb_state   Circuit breaker state.
+ * @var string $cb_label   Circuit breaker label.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
-    exit;
+	exit;
 }
 ?>
 <div class="ys-marketplace-wrap">
 
-    <!-- 色塊 Header（放在 .wrap 之前，避免 WP notice 插入） -->
-    <div class="ys-page-hero">
-        <div class="ys-page-hero-content">
-            <div class="ys-hero-title">
-                <span class="dashicons dashicons-store"></span>
-                <?php echo esc_html__( 'YS 外掛市集', 'ys-plugin-hub-client' ); ?>
-            </div>
-            <div class="ys-hero-subtitle"><?php
-                /* translators: %s: YANGSHEEP CLOUD link */
-                printf(
-                    esc_html__( '由 %s 開發與維護', 'ys-plugin-hub-client' ),
-                    '<a href="https://yangsheep.com.tw" target="_blank" rel="noopener noreferrer" style="color:rgba(255,255,255,0.95);text-decoration:none;">YANGSHEEP CLOUD</a>'
-                );
-            ?></div>
-        </div>
-        <div class="ys-page-hero-actions">
-            <span id="ys-hub-status" class="ys-hub-status ys-hub-status-checking" title="<?php echo esc_attr__( '檢查連線中...', 'ys-plugin-hub-client' ); ?>">
-                <span class="ys-hub-status-dot"></span>
-                <span class="ys-hub-status-text"><?php echo esc_html__( '連線中...', 'ys-plugin-hub-client' ); ?></span>
-            </span>
-            <button type="button" id="ys-refresh-btn" class="ys-btn ys-btn-hero">
-                <span class="dashicons dashicons-update"></span>
-                <?php echo esc_html__( '檢查更新', 'ys-plugin-hub-client' ); ?>
-            </button>
-        </div>
-    </div>
+	<div class="ys-page-hero">
+		<div class="ys-page-hero-content">
+			<div class="ys-hero-title">
+				<span class="dashicons dashicons-store"></span>
+				<?php echo esc_html__( 'YS 外掛市集', 'ys-plugin-hub-client' ); ?>
+			</div>
+			<div class="ys-hero-subtitle">
+				<?php
+				printf(
+					/* translators: %s: YANGSHEEP CLOUD link. */
+					esc_html__( '由 %s 開發與維護', 'ys-plugin-hub-client' ),
+					'<a href="https://yangsheep.com.tw" target="_blank" rel="noopener noreferrer" style="color:rgba(255,255,255,0.95);text-decoration:none;">YANGSHEEP CLOUD</a>'
+				);
+				?>
+			</div>
+		</div>
+		<div class="ys-page-hero-actions">
+			<span id="ys-hub-status" class="ys-hub-status ys-hub-status-checking" title="<?php echo esc_attr__( '檢查連線中...', 'ys-plugin-hub-client' ); ?>">
+				<span class="ys-hub-status-dot"></span>
+				<span class="ys-hub-status-text"><?php echo esc_html__( '檢查中...', 'ys-plugin-hub-client' ); ?></span>
+			</span>
+			<button type="button" id="ys-refresh-btn" class="ys-btn ys-btn-hero">
+				<span class="dashicons dashicons-update"></span>
+				<?php echo esc_html__( '檢查更新', 'ys-plugin-hub-client' ); ?>
+			</button>
+		</div>
+	</div>
 
-    <!-- WP notice 錨點（讓 admin notice 顯示在 hero 和卡片之間） -->
-    <div class="wrap"><h2 style="display:none;"></h2></div>
+	<div class="wrap"><h2 style="display:none;"></h2></div>
 
-    <!-- 公告區 -->
-    <div id="ys-announcements" class="ys-announcements-wrap" style="display:none;">
-        <!-- JS 動態渲染 -->
-    </div>
+	<div id="ys-announcements" class="ys-announcements-wrap" style="display:none;"></div>
 
-    <!-- 工具列 -->
-    <div class="ys-marketplace-toolbar">
-        <div class="ys-filter-tabs" id="ys-filter-tabs">
-            <button type="button" class="ys-filter-tab active" data-category="all">
-                <?php echo esc_html__( '全部', 'ys-plugin-hub-client' ); ?>
-            </button>
-            <!-- 動態分類由 JS 填入 -->
-        </div>
-        <div class="ys-search-box">
-            <span class="dashicons dashicons-search"></span>
-            <input type="text"
-                   id="ys-search-input"
-                   placeholder="<?php echo esc_attr__( '搜尋外掛...', 'ys-plugin-hub-client' ); ?>"
-            />
-        </div>
-    </div>
+	<div class="ys-marketplace-toolbar">
+		<div class="ys-marketplace-filters">
+			<div class="ys-platform-tabs" id="ys-platform-tabs">
+				<button type="button" class="ys-filter-tab ys-platform-tab active" data-platform="all">
+					<?php echo esc_html__( '全部', 'ys-plugin-hub-client' ); ?>
+				</button>
+			</div>
+			<div class="ys-filter-tabs" id="ys-filter-tabs">
+				<button type="button" class="ys-filter-tab active" data-category="all">
+					<?php echo esc_html__( '全部', 'ys-plugin-hub-client' ); ?>
+				</button>
+			</div>
+		</div>
+		<div class="ys-search-box">
+			<span class="dashicons dashicons-search"></span>
+			<input type="text"
+				id="ys-search-input"
+				placeholder="<?php echo esc_attr__( '搜尋外掛...', 'ys-plugin-hub-client' ); ?>"
+			/>
+		</div>
+	</div>
 
-    <!-- 外掛網格（初始為 skeleton） -->
-    <div id="ys-plugin-grid" class="ys-plugin-grid">
-        <!-- JS 會自動填入 skeleton 或外掛卡片 -->
-    </div>
+	<div id="ys-plugin-grid" class="ys-plugin-grid"></div>
 
-    <!-- WP footer 已有 YANGSHEEP CLOUD 標示，此處不重複 -->
+	<input type="hidden" id="ys-hub-url" value="<?php echo esc_attr( YS_HUB_CLIENT_HUB_URL ); ?>" />
+	<input type="hidden" id="ys-site-key" value="<?php echo esc_attr( $site_key ); ?>" />
+	<input type="hidden" id="ys-auto-check" value="yes" />
 
-    <!-- 隱藏欄位（保留功能但不向用戶顯示任何設定） -->
-    <input type="hidden" id="ys-hub-url" value="<?php echo esc_attr( YS_HUB_CLIENT_HUB_URL ); ?>" />
-    <input type="hidden" id="ys-site-key" value="<?php echo esc_attr( $site_key ); ?>" />
-    <input type="hidden" id="ys-auto-check" value="yes" />
-
-</div><!-- .ys-marketplace-wrap -->
+</div>

@@ -1,7 +1,7 @@
 /**
  * YS Plugin Hub Client - 市集頁面樣式
  * 設計系統：莫蘭迪色 (Morandi Palette)
- * v2.0.0
+ * v2.0.2
  */
 
 /* ============================================
@@ -48,6 +48,24 @@
     flex-wrap: wrap;
     gap: 12px;
     margin-bottom: 20px;
+}
+
+.ys-marketplace-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.ys-platform-tabs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.ys-platform-tab {
+    font-weight: 600;
 }
 
 .ys-marketplace-title {
@@ -355,8 +373,50 @@
 }
 
 .ys-plugin-version {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
     font-size: 12px;
     color: var(--ys-adm-text-muted);
+}
+
+.ys-plugin-taxonomy-tags {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.ys-plugin-taxonomy-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 20px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.35;
+    white-space: nowrap;
+}
+
+.ys-plugin-platform-badge {
+    color: var(--ys-adm-primary-dark);
+    background: rgba(143, 166, 181, 0.14);
+}
+
+.ys-plugin-category-badge {
+    color: #9a6a22;
+    background: rgba(214, 160, 80, 0.16);
+}
+
+.ys-plugin-version-category {
+    color: var(--ys-adm-primary-dark);
+    font-weight: 600;
+}
+
+.ys-plugin-version-separator {
+    color: var(--ys-adm-border);
 }
 
 .ys-plugin-description {

@@ -66,6 +66,7 @@ final class YSHubAjaxHandler {
         if ( false !== $cached && is_array( $cached ) ) {
             wp_send_json_success( array(
                 'plugins'       => self::merge_local_status( $cached['plugins'] ?? array() ),
+                'platforms'     => $cached['platforms'] ?? array(),
                 'categories'    => $cached['categories'] ?? array(),
                 'announcements' => $cached['announcements'] ?? array(),
                 'source'        => 'cache',
@@ -91,6 +92,11 @@ final class YSHubAjaxHandler {
             $plugins = $response['plugins'];
         }
 
+        $platforms = array();
+        if ( isset( $response['platforms'] ) && is_array( $response['platforms'] ) ) {
+            $platforms = $response['platforms'];
+        }
+
         // 取得分類列表
         $categories      = array();
         $cat_response    = $api->get( YSEndpointRegistry::CATEGORIES );
@@ -109,6 +115,7 @@ final class YSHubAjaxHandler {
             // 快取 6 小時（包含分類和公告）
             set_site_transient( 'ys_hub_marketplace_data', array(
                 'plugins'       => $plugins,
+                'platforms'     => $platforms,
                 'categories'    => $categories,
                 'announcements' => $announcements,
             ), 6 * HOUR_IN_SECONDS );
@@ -116,6 +123,7 @@ final class YSHubAjaxHandler {
 
         wp_send_json_success( array(
             'plugins'       => self::merge_local_status( $plugins ),
+            'platforms'     => $platforms,
             'categories'    => $categories,
             'announcements' => $announcements,
             'source'        => 'remote',
@@ -334,6 +342,10 @@ final class YSHubAjaxHandler {
         }
 
         $plugins = $response['plugins'] ?? $response;
+        $platforms = array();
+        if ( isset( $response['platforms'] ) && is_array( $response['platforms'] ) ) {
+            $platforms = $response['platforms'];
+        }
 
         // 取得分類列表
         $categories      = array();
@@ -352,6 +364,7 @@ final class YSHubAjaxHandler {
         if ( is_array( $plugins ) ) {
             set_site_transient( 'ys_hub_marketplace_data', array(
                 'plugins'       => $plugins,
+                'platforms'     => $platforms,
                 'categories'    => $categories,
                 'announcements' => $announcements,
             ), 6 * HOUR_IN_SECONDS );
@@ -359,6 +372,7 @@ final class YSHubAjaxHandler {
 
         wp_send_json_success( array(
             'plugins'       => self::merge_local_status( $plugins ),
+            'platforms'     => $platforms,
             'categories'    => $categories,
             'announcements' => $announcements,
             'message'       => __( '市集資料已刷新', 'ys-plugin-hub-client' ),

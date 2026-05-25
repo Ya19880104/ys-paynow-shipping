@@ -28,6 +28,7 @@ class YSPluginInfo {
      */
     public static function from_hub_response( array $plugin_data ): object {
         $info = new \stdClass();
+        $download_url = $plugin_data['package'] ?? $plugin_data['download_url'] ?? '';
 
         $info->name          = $plugin_data['name'] ?? '';
         $info->slug          = $plugin_data['slug'] ?? '';
@@ -38,8 +39,8 @@ class YSPluginInfo {
         $info->requires      = $plugin_data['requires'] ?? '5.8';
         $info->tested        = $plugin_data['tested'] ?? '';
         $info->requires_php  = $plugin_data['requires_php'] ?? '7.4';
-        $info->download_link = $plugin_data['download_url'] ?? '';
-        $info->trunk         = $plugin_data['download_url'] ?? '';
+        $info->download_link = $download_url;
+        $info->trunk         = $download_url;
         $info->last_updated  = $plugin_data['last_updated'] ?? '';
 
         // 描述區塊
@@ -72,13 +73,14 @@ class YSPluginInfo {
      */
     public static function to_update_object( array $plugin_data, string $plugin_file ): object {
         $update = new \stdClass();
+        $download_url = $plugin_data['package'] ?? $plugin_data['download_url'] ?? '';
 
         $update->id          = $plugin_data['slug'] ?? '';
         $update->slug        = $plugin_data['slug'] ?? '';
         $update->plugin      = $plugin_file;
         $update->new_version = $plugin_data['version'] ?? '';
         $update->url         = $plugin_data['homepage'] ?? '';
-        $update->package     = $plugin_data['download_url'] ?? '';
+        $update->package     = $download_url;
         $update->requires    = $plugin_data['requires'] ?? '5.8';
         $update->tested      = $plugin_data['tested'] ?? '';
         $update->requires_php = $plugin_data['requires_php'] ?? '7.4';
