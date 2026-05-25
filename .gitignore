@@ -113,3 +113,6 @@ tmpclaude-*
 *.backup
 *.bak
 *.orig
+
+# === Distribution exclusions — keep local, exclude from GitHub release ===
+DEVELOPMENT.md
