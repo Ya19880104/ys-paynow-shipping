@@ -1219,28 +1219,41 @@ class YSSettingsTab {
 		<style>
 		/* ===== YS PayNow Settings Styles ===== */
 
+		.ys-settings-wrap {
+			max-width: 1200px;
+			margin: 20px 20px 20px 0;
+		}
+
 		/* 頁面標頭 */
 		.ys-settings-header {
-			margin: 20px 0 0 0;
+			background: linear-gradient(135deg, #8fa8b8 0%, #7a95a6 100%);
+			color: #fff;
+			padding: 30px;
+			border-radius: 12px;
+			margin: 0 0 20px 0;
+			box-shadow: 0 4px 15px rgba(143, 168, 184, 0.3);
 		}
 
 		.ys-settings-header h2 {
 			display: flex;
 			align-items: center;
-			gap: 8px;
-			color: #5a7080;
-			font-size: 22px;
+			gap: 10px;
+			color: #fff;
+			font-size: 28px;
+			margin: 0 0 8px 0;
 		}
 
 		.ys-settings-header h2 .dashicons {
-			color: #8fa8b8;
-			font-size: 24px;
+			color: #fff;
+			font-size: 32px;
+			width: 32px;
+			height: 32px;
 		}
 
 		.ys-settings-desc {
-			color: #888;
-			font-size: 14px;
-			margin-top: 5px;
+			color: rgba(255, 255, 255, 0.9);
+			font-size: 15px;
+			margin: 0;
 		}
 
 		/* 隱藏非活動頁籤內容 */
@@ -1251,7 +1264,7 @@ class YSSettingsTab {
 		/* 頁籤導航樣式 */
 		.ys-paynow-tabs {
 			border-bottom: 2px solid #c5d1d8;
-			margin: 20px 0 0 0 !important;
+			margin: 0 !important;
 			padding: 0;
 			display: flex;
 			flex-wrap: wrap;
@@ -1286,12 +1299,17 @@ class YSSettingsTab {
 			box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
 		}
 
-		/* 頁籤內容區 */
-		.ys-tab-content {
+		.ys-settings-form {
 			background: #fff;
 			padding: 25px;
 			border-radius: 0 0 12px 12px;
 			box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+		}
+
+		/* 頁籤內容區 */
+		.ys-tab-content {
+			background: transparent;
+			padding: 0;
 		}
 
 		/* 區段標題容器 - 全寬，標題與描述同行 */
@@ -1423,7 +1441,11 @@ class YSSettingsTab {
 
 		/* 儲存按鈕 */
 		.ys-submit-wrap {
+			display: flex;
+			align-items: center;
 			margin-top: 20px;
+			padding-top: 20px;
+			border-top: 1px solid #c5d1d8;
 		}
 
 		.ys-submit-wrap .button-primary {
@@ -1455,6 +1477,46 @@ class YSSettingsTab {
 			border-radius: 8px !important;
 			padding: 20px !important;
 			max-width: 600px;
+		}
+
+		@media screen and (max-width: 782px) {
+			.ys-settings-wrap {
+				margin: 10px 10px 20px 0;
+			}
+
+			.ys-settings-header {
+				padding: 20px;
+			}
+
+			.ys-settings-header h2 {
+				font-size: 22px;
+			}
+
+			.ys-settings-form {
+				padding: 20px;
+			}
+
+			.ys-paynow-tabs .nav-tab {
+				flex: 1 1 auto;
+				justify-content: center;
+				padding: 10px 12px;
+			}
+
+			.ys-tab-content .form-table th,
+			.ys-tab-content .form-table td {
+				display: block;
+				width: auto;
+				padding: 12px;
+			}
+
+			.ys-tab-content .form-table input[type="text"],
+			.ys-tab-content .form-table input[type="email"],
+			.ys-tab-content .form-table input[type="password"],
+			.ys-tab-content .form-table input[type="number"],
+			.ys-tab-content .form-table select {
+				width: 100%;
+				max-width: 100%;
+			}
 		}
 		</style>
 		<script type="text/javascript">
