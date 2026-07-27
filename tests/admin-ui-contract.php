@@ -35,9 +35,10 @@ ys_paynow_ui_assert(
 );
 
 ys_paynow_ui_assert(
-	str_contains($loader, 'Version:     2.0.4')
-		&& str_contains($loader, 'YSToolboxMenuNormalizer'),
-	'PayNow vendors the menu-normalizing Hub Client 2.0.4',
+	str_contains($loader, 'Version:     2.0.5')
+		&& str_contains($loader, 'YSToolboxMenuNormalizer')
+		&& !str_contains($loader, 'FeaturesUtil::declare_compatibility'),
+	'PayNow vendors Hub Client 2.0.5 without a library-owned HPOS declaration',
 	$failures
 );
 

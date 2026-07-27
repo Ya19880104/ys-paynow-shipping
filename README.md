@@ -4,7 +4,7 @@
 
 ## 版本資訊
 
-**當前版本**：1.5.10
+**當前版本**：1.5.11
 **最後更新**：2026-07-26
 **開發者**：羊羊數位科技有限公司（YANGSHEEP DESIGN）
 **網站**：https://yangsheep.com.tw
@@ -282,6 +282,10 @@ WooCommerce > 設定 > 運送 > YS PayNow
 ---
 
 ## 版本紀錄
+
+### v1.5.11 (2026-07-28)
+
+- **Hub Client 2.0.5**：移除 vendor library 無效的 HPOS 宣告；PayNow Shipping 主外掛原有的 HPOS 相容宣告保持不變。
 
 ### v1.5.10 (2026-07-25)
 
